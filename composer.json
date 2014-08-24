@@ -1,0 +1,11 @@
+{
+	"name": "alexpw/falco",
+	"description": "A partial Function Application Library emphasizing COmposition",
+	"homepage": "https://github.com/alexpw/falco",
+	"require": {
+		"php": ">=5.3.0"
+	},
+	"require-dev": {
+		"phpunit/phpunit": "4.2.*"
+	}
+}
