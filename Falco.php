@@ -747,27 +747,6 @@ $reducekv = $curry(function ($f, $initialValue, $xs) {
 	return $accumulator;
 }, 2);
 
-$groupBy = $curry(function ($f, $xs) {
-	$out = array();
-	$flag = null;
-	$group = array();
-	foreach ($xs as $x) {
-		$truthy = call_user_func($f, $x);
-		if ($truthy !== $flag) {
-			$flag = $truthy;
-			if (count($group)) {
-				$out[] = $group;
-			}
-			$group = array();
-		}
-		$group[] = $x;
-	}
-	if (count($group)) {
-		$out[] = $group;
-	}
-	return $out;
-}, 2);
-
 $partitionBy = $curry(function ($f, $xs) {
 	$out = array();
 	$flag = null;
@@ -795,7 +774,10 @@ $partitionBy = $curry(function ($f, $xs) {
  *
  * Specifically, it is a variation of groupBy that presumes that only ONE
  * row can match the $key, so that it can provide a mapping of:
- * array(row1[key] => row1, row2[key] => row2).
+ * array(
+ *   row1[key] => row1,
+ *   row2[key] => row2
+ * );
  *
  * @param mixed $mixedKeys
  *
@@ -920,6 +902,146 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
 			foreach ($in as $n) {
 				if (isset($n[$key])) {
 					$out[$n[$key]] = isset($n[$mixedVals]) ? $n[$mixedVals] : null;
+				}
+			}
+		}
+	}
+	return $out;
+}, 3);
+
+/**
+ * Creates a view of your data indexed by a grouping strategy.
+ *
+ * Specifically, it is a variation of indexBy that allows for more than one row
+ * to match the key, so that it can provide a mapping of:
+ * array(
+ *    row1[key] => row1,
+ *    row2[key] => row2
+ * );
+ *
+ * @param mixed $mixedKeys
+ *
+ *  - single column (string/col-index)
+ *  - array of columns, optionally mapped to transform fns:
+ *   ['id', 'name']
+ *   ['id' => F::multilyBy(-1), 'name']
+ *
+ * @param mixed $mixedVals
+ *
+ *  - null (leave alone)
+ *  - single column (string/col-index)
+ *  - array of columns, optionally mapped to transform fns
+ *  - callback
+ *
+ * @param array $in An array of arrays or objects implementing ArrayAccess.
+ *
+ *
+ * @examples
+ *
+ * $in = [['id' => 3, 'name' => 'alex'],
+ *        ['id' => 5, 'name' => 'john']];
+ *
+ * groupBy('id', null, $in);
+ * => [3 => ['id' => 3, 'name' => 'alex'],
+ *     5 => ['id' => 5, 'name' => 'john']]
+ *
+ * groupBy('id', 'name', $in);
+ * => [3 => ['name' => 'alex'],
+ *     5 => ['name' => 'john']]
+ *
+ * groupBy(['name', 'id'], null, $in)
+ * => ['alex' => [3 => ['id' => 3, 'name' => 'alex']],
+ *     'john' => [5 => ['id' => 5, 'name' => 'john']]]
+ */
+$groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
+	$out = array();
+
+	if (is_array($mixedKeys)) {
+		$last_idx = count($mixedKeys) - 1;
+		foreach ($in as $n) {
+
+			$ref =& $out;
+			$i = 0;
+			foreach ($mixedKeys as $keyKey => $keyFn) {
+
+				$kval = null;
+				if (is_callable($keyFn)) {
+					if (isset($n[$keyKey])) {
+						$kval = call_user_func($keyFn, $n[$keyKey]);
+					}
+				} else if (isset($n[$keyFn])) {
+					$kval = $n[$keyFn];
+				}
+				if ($kval === null) {
+					break;
+				}
+
+				if (! isset($ref[$kval])) {
+					$ref[$kval] = array();
+				}
+
+				if ($i === $last_idx) {
+					if (is_null($mixedVals)) {
+						$ref[$kval][] = $n;
+					} else if (is_array($mixedVals)) {
+						$val = array();
+						foreach ($mixedVals as $valKey => $valFn) {
+							if (is_callable($valFn)) {
+								if (isset($n[$valKey])) {
+									$val[$valKey] = call_user_func($valFn, $n[$valKey]);
+								}
+							} else if (isset($n[$valFn])) {
+								$valKey = $valFn;
+								$val[$valKey] = $n[$valKey];
+							}
+						}
+						$ref[$kval][] = $val;
+					} else if (is_callable($mixedVals)) {
+						$ref[$kkval][] = call_user_func($mixedVals, $n);
+					} else if (isset($n[$mixedVals])) {
+						$ref[$kval][] = $n[$mixedVals];
+					}
+				} else {
+					$ref =& $ref[$kval];
+				}
+				$i++;
+			}
+		}
+	}
+	else if (! is_object($mixedKeys) && strlen($mixedKeys) !== 0) {
+		$key = $mixedKeys;
+		if (is_null($mixedVals)) {
+			foreach ($in as $n) {
+				if (isset($n[$key])) {
+					$out[$n[$key]][] = $n;
+				}
+			}
+		} else if (is_array($mixedVals)) {
+			foreach ($in as $n) {
+				if (! isset($n[$key])) {
+					continue;
+				}
+				$val = array();
+				foreach ($mixedVals as $valKey => $valFn) {
+					if (is_callable($valFn)) {
+						if (isset($n[$valKey])) {
+							$val[$valKey] = call_user_func($valFn, $n[$valKey]);
+						}
+					} else if (isset($n[$valFn])) {
+						$valKey = $valFn;
+						$val[$valKey] = $n[$valKey];
+					}
+				}
+				$out[$n[$key]][] = $val;
+			}
+		} else if (is_callable($mixedVals)) {
+			foreach ($in as $n) {
+				$out[$n[$key]][] = call_user_func($mixedVals, $n);
+			}
+		} else {
+			foreach ($in as $n) {
+				if (isset($n[$key])) {
+					$out[$n[$key]][] = isset($n[$mixedVals]) ? $n[$mixedVals] : null;
 				}
 			}
 		}

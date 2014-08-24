@@ -2,7 +2,7 @@
 
 use Falco\F as F;
 
-class IndexBy extends PHPUnit_Framework_TestCase {
+class IndexByTest extends PHPUnit_Framework_TestCase {
 
 	private static $dummyRecords = array(
 		array('id' => 3,  'name' => 'John Smith',  'sex' => 'M', 'age' => 20, 'food' => 'Bacon'),
