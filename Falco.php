@@ -186,7 +186,7 @@ $curry = function ($f, $numArgs = null) {
 			return $currier($args);
 		};
 	};
-	return $currier([]);
+	return $currier(array());
 };
 
 $all = $curry(function ($f, $xs) {
@@ -266,25 +266,13 @@ $opOr = function () {
 
 $values = function ($xs) {
 	if (is_string($xs)) return str_split($xs);
-	if (is_array($xs)) return array_values($xs);
-	if (is_object($xs) && $xs instanceof Traversable) {
-		$out = array();
-		foreach ($xs as $x) {
-			$out[] = $x;
-		}
-		return $out;
-	}
+	if (is_array($xs))  return array_values($xs);
+	if (is_object($xs)) return array_values(get_object_vars($xs));
 };
 $keys = function ($xs) {
 	if (is_string($xs)) return range(0, strlen($xs));
-	if (is_array($xs)) return array_keys($xs);
-	if (is_object($xs) && $xs instanceof Traversable) {
-		$out = array();
-		foreach ($xs as $k => $x) {
-			$out[] = $k;
-		}
-		return $out;
-	}
+	if (is_array($xs))  return array_keys($xs);
+	if (is_object($xs)) return array_keys(get_object_vars($xs));
 };
 $toPairs = function ($xs) {
 	if (is_string($xs)) return str_split($xs);
@@ -329,9 +317,9 @@ $juxt = function () {
 	};
 };
 
-$apply = $curry(function ($f, $args) {
+$apply = function ($f, $args) {
 	return call_user_func_array($f, $args);
-}, 2);
+};
 
 $compose = function () {
 	$fns = func_get_args();
@@ -420,7 +408,7 @@ $where = function ($kvs, $strict = true) {
 			if (is_array($el)) {
 				foreach ($kvs as $k => $v) {
 					if (is_callable($v)) {
-						if ($el[$k] !== call_user_func($v, $el[$k])) {
+						if (! call_user_func($v, $el[$k])) {
 							return false;
 						}
 					}
@@ -431,7 +419,7 @@ $where = function ($kvs, $strict = true) {
 			} else {
 				foreach ($kvs as $k => $v) {
 					if (is_callable($v)) {
-						if ($el->$k !== call_user_func($v, $el->$k)) {
+						if (! call_user_func($v, $el->$k)) {
 							return false;
 						}
 					}
@@ -447,7 +435,7 @@ $where = function ($kvs, $strict = true) {
 			if (is_array($el)) {
 				foreach ($kvs as $k => $v) {
 					if (is_callable($v)) {
-						if ($el[$k] != call_user_func($v, $el[$k])) {
+						if (! call_user_func($v, $el[$k])) {
 							return false;
 						}
 					}
@@ -458,7 +446,7 @@ $where = function ($kvs, $strict = true) {
 			} else {
 				foreach ($kvs as $k => $v) {
 					if (is_callable($v)) {
-						if ($el->$k != call_user_func($v, $el->$k)) {
+						if (! call_user_func($v, $el->$k)) {
 							return false;
 						}
 					}
