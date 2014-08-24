@@ -26,29 +26,7 @@ final class F {
 	}
 }
 
-$identity = function ($x) { return $x; };
 
-$always = function ($x) {
-	return function () use ($x) {
-		$args = func_get_args();
-		return $x;
-	};
-};
-$alwaysTrue  = $always(true);
-$alwaysFalse = $always(false);
-$alwaysNull  = $always(null);
-
-$isOdd    = function ($x) { return abs($x) % 2 === 1; };
-$isEven   = function ($x) { return abs($x) % 2 === 0; };
-$isTruthy = function ($x) { return !! $x; };
-$isFalsey = function ($x) { return ! $x; };
-$isEmpty  = function ($x) { return empty($x); };
-$isPositive = function ($x) { return $x > 0; };
-$isNegative = function ($x) { return $x < 0; };
-$isZero     = function ($x) { return $x === 0; };
-
-$min = function () { return call_user_func_array('min', func_get_args()); };
-$max = function () { return call_user_func_array('max', func_get_args()); };
 
 /**
  * The use of "thread" here refers to
@@ -158,18 +136,34 @@ $curry = function ($f, $numArgs = null) {
 	return $currier(array());
 };
 
-$addBy = $curry(function ($n, $x) {
-	return $x + $n;
-}, 2);
-$subtractBy = $curry(function ($n, $x) {
-	return $x - $n;
-}, 2);
-$multiplyBy = $curry(function ($n, $x) {
-	return $x * $n;
-}, 2);
-$divideBy = $curry(function ($n, $x) {
-	return $x / $n;
-}, 2);
+$always = function ($x) {
+	return function () use ($x) {
+		$args = func_get_args();
+		return $x;
+	};
+};
+$alwaysTrue  = $always(true);
+$alwaysFalse = $always(false);
+$alwaysNull  = $always(null);
+$alwaysZero  = $always(0);
+
+$identity = function ($x) { return $x; };
+$isOdd    = function ($x) { return abs($x) % 2 === 1; };
+$isEven   = function ($x) { return abs($x) % 2 === 0; };
+$isTruthy = function ($x) { return !! $x; };
+$isFalsey = function ($x) { return ! $x; };
+$isEmpty  = function ($x) { return empty($x); };
+$isPositive = function ($x) { return $x > 0; };
+$isNegative = function ($x) { return $x < 0; };
+$isZero     = function ($x) { return $x === 0; };
+
+$min = function () { return call_user_func_array('min', func_get_args()); };
+$max = function () { return call_user_func_array('max', func_get_args()); };
+
+$addBy      = $curry(function ($n, $x) { return $x + $n; }, 2);
+$subtractBy = $curry(function ($n, $x) { return $x - $n; }, 2);
+$multiplyBy = $curry(function ($n, $x) { return $x * $n; }, 2);
+$divideBy   = $curry(function ($n, $x) { return $x / $n; }, 2);
 
 $all = $curry(function ($f, $xs) {
 	foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
@@ -184,7 +178,7 @@ $none = $curry(function ($f, $xs) {
 	return true;
 }, 2);
 
-$not = function ($f) {
+$opNot = function ($f) {
 	if (is_callable($f)) {
 		return function ($x) use ($f) {
 			return ! call_user_func($f, $x);
@@ -195,7 +189,6 @@ $not = function ($f) {
 		};
 	}
 };
-$opNot = $not;
 
 $opAnd = function () {
 	$fns = func_get_args();
@@ -246,6 +239,19 @@ $opOr = function () {
 	};
 };
 
+$count = function ($xs) {
+	if (is_string($xs)) return strlen($xs);
+	if (is_array($xs))  return count($xs);
+	if (is_object($xs)) return count(get_object_vars($xs));
+};
+$countBy = $curry(function ($f, $xs) {
+	if (is_string($xs)) return str_split($xs);
+	$cnt = 0;
+	foreach ($xs as $x) {
+		$cnt += call_user_func($f, $x);
+	}
+	return $cnt;
+}, 2);
 $values = function ($xs) {
 	if (is_string($xs)) return str_split($xs);
 	if (is_array($xs))  return array_values($xs);
@@ -256,6 +262,7 @@ $keys = function ($xs) {
 	if (is_array($xs))  return array_keys($xs);
 	if (is_object($xs)) return array_keys(get_object_vars($xs));
 };
+
 $toPairs = function ($xs) {
 	if (is_string($xs)) return str_split($xs);
 	if (is_array($xs) || (is_object($xs) && $xs instanceof Traversable)) {
@@ -274,16 +281,40 @@ $fromPairs = function ($xs) {
 	}
 	return $out;
 };
+
+$sort    = function ($in) { sort($in);  return $in; };
+$ksort   = function ($in) { ksort($in); return $in; };
+$asort   = function ($in) { asort($in); return $in; };
+$sortBy  = $curry(function ($cmp, $in) { usort($in, $cmp);  return $in; }, 2);
+$ksortBy = $curry(function ($cmp, $in) { uksort($in, $cmp); return $in; }, 2);
+$asortBy = $curry(function ($cmp, $in) { uasort($in, $cmp); return $in; }, 2);
+
+$reverse = function ($in) {
+	switch (gettype($in)) {
+		case 'array':  $arr = $in; break;
+		case 'string': $arr = str_split($in); break;
+		case 'object': $arr = get_object_vars($in); break;
+		default: return $in;
+	}
+	return array_reverse($arr);
+};
+
 $contains = $curry(function ($needle, $haystack) {
-	if (is_string($haystack)) {
-		return strpos($haystack, $needle) !== false;
+	switch (gettype($haystack)) {
+		case 'array':  return in_array($needle, $haystack);
+		case 'string': return strpos($haystack, $needle) !== false;
+		case 'object':
+			$vars = get_object_vars($haystack);
+			return in_array($needle, $vars);
 	}
-	if (is_array($haystack)) {
-		return in_array($needle, $haystack);
-	}
-	if (is_object($haystack)) {
-		$vars = get_object_vars($haystack);
-		return in_array($needle, $vars);
+	return false;
+}, 2);
+$containsBy = $curry(function ($f, $xs) {
+	if (is_string($xs)) return str_split($xs);
+	foreach ($xs as $x) {
+		if (call_user_func($f, $x)) {
+			return true;
+		}
 	}
 	return false;
 }, 2);
