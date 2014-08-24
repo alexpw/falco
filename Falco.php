@@ -296,6 +296,14 @@ $toPairs = function ($xs) {
 		return $out;
 	}
 };
+$fromPairs = function ($xs) {
+	reset($xs);
+	$out = array();
+	while (list($key, $val) = $xs) {
+		$out[$key] = $val;
+	}
+	return $out;
+};
 $contains = $curry(function ($needle, $haystack) {
 	if (is_string($haystack)) {
 		return strpos($haystack, $needle) !== false;
@@ -411,13 +419,23 @@ $where = function ($kvs, $strict = true) {
 		return function ($el) use ($kvs) {
 			if (is_array($el)) {
 				foreach ($kvs as $k => $v) {
-					if ($el[$k] !== $v) {
+					if (is_callable($v)) {
+						if ($el[$k] !== call_user_func($v, $el[$k])) {
+							return false;
+						}
+					}
+					else if ($el[$k] !== $v) {
 						return false;
 					}
 				}
 			} else {
 				foreach ($kvs as $k => $v) {
-					if ($el->$k !== $v) {
+					if (is_callable($v)) {
+						if ($el->$k !== call_user_func($v, $el->$k)) {
+							return false;
+						}
+					}
+					else if ($el->$k !== $v) {
 						return false;
 					}
 				}
@@ -428,13 +446,23 @@ $where = function ($kvs, $strict = true) {
 		return function ($el) use ($kvs) {
 			if (is_array($el)) {
 				foreach ($kvs as $k => $v) {
-					if ($el[$k] != $v) {
+					if (is_callable($v)) {
+						if ($el[$k] != call_user_func($v, $el[$k])) {
+							return false;
+						}
+					}
+					else if ($el[$k] != $v) {
 						return false;
 					}
 				}
 			} else {
 				foreach ($kvs as $k => $v) {
-					if ($el->$k != $v) {
+					if (is_callable($v)) {
+						if ($el->$k != call_user_func($v, $el->$k)) {
+							return false;
+						}
+					}
+					else if ($el->$k != $v) {
 						return false;
 					}
 				}
@@ -443,6 +471,10 @@ $where = function ($kvs, $strict = true) {
 		};
 	}
 };
+
+$nth = $curry(function ($n, $xs) {
+	return isset($xs[$n]) ? $xs[$n] : null;
+}, 2);
 
 $take = $curry(function ($n, $xs) {
 	switch (gettype($xs)) {
@@ -465,7 +497,7 @@ $take = $curry(function ($n, $xs) {
 $first  = $head = $take(1);
 $ffirst = $compose($first, $first);
 
-$drop = $curry(function ($n, $xs) {
+$skip = $curry(function ($n, $xs) {
 	switch (gettype($xs)) {
 		case 'array':  return array_slice($xs, $n);
 		case 'string': return substr($xs, $n);
@@ -484,7 +516,7 @@ $drop = $curry(function ($n, $xs) {
 	}
 }, 2);
 
-$rest  = $tail = $drop(1);
+$rest  = $tail = $skip(1);
 $frest = $compose($first, $rest);
 
 $takeWhile = $curry(function ($f, $xs) {
@@ -512,16 +544,26 @@ $takeUntil = $curry(function ($f, $xs) {
 	return $out;
 }, 2);
 
-$dropWhile = $curry(function ($f, $xs) {
+$skipWhile = $curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
-	$out = array();
+	$i = 0;
+	foreach ($xs as $x) {
+		if (call_user_func($f, $x)) {
+			$i++;
+		}
+	}
+	return array_slice($xs, $i);
+}, 2);
+
+$skipUntil = $curry(function ($f, $xs) {
+	if (is_string($xs)) $xs = str_split($xs);
+	$i = 0;
 	foreach ($xs as $x) {
 		if (! call_user_func($f, $x)) {
-			break;
+			$i++;
 		}
-		$out[] = $x;
 	}
-	return $out;
+	return array_slice($xs, $i);
 }, 2);
 
 $concat = function () {
@@ -739,6 +781,27 @@ $reducekv = $curry(function ($f, $initialValue, $xs) {
 	return $accumulator;
 }, 2);
 
+$groupBy = $curry(function ($f, $xs) {
+	$out = array();
+	$flag = null;
+	$group = array();
+	foreach ($xs as $x) {
+		$truthy = call_user_func($f, $x);
+		if ($truthy !== $flag) {
+			$flag = $truthy;
+			if (count($group)) {
+				$out[] = $group;
+			}
+			$group = array();
+		}
+		$group[] = $x;
+	}
+	if (count($group)) {
+		$out[] = $group;
+	}
+	return $out;
+}, 2);
+
 $partitionBy = $curry(function ($f, $xs) {
 	$out = array();
 	$flag = null;
@@ -760,6 +823,133 @@ $partitionBy = $curry(function ($f, $xs) {
 	return $out;
 }, 2);
 
+/**
+ * A variation of group_by that presumes that only ONE element with $in
+ * will match the $key, so that it can provide a quick mapping of:
+ * element[key] => element;
+ *
+ * The $valKeysOrFn optionally restricts which keys are allowed in the
+ * mapped element.
+ *
+ * @examples
+ * $in = [['id' => 3, 'name' => 'alex'],
+ *        ['id' => 5, 'name' => 'john']];
+ *
+ * indexBy('id', null, $in);
+ * => [3 => ['id' => 3, 'name' => 'alex'],
+ *     5 => ['id' => 5, 'name' => 'john']]
+ *
+ * indexBy('id', 'name', $in);
+ * => [3 => ['name' => 'alex'],
+ *     5 => ['name' => 'john']]
+ *
+ * indexBy(['name', 'id'], null $in)
+ * => ['alex' => [3 => ['id' => 3, 'name' => 'alex']],
+ *     'john' => [5 => ['id' => 5, 'name' => 'john']]]
+ */
+$indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
+	$out = array();
+
+	// pre-compute the flip
+	if (is_array($valKeysOrFn)) {
+		$valKeys = array_flip($valKeysOrFn);
+	}
+
+	if (is_string($keys)) {
+		$key = $keys;
+		if (is_null($valKeysOrFn)) {
+			foreach ($in as $n) {
+				$out[$n[$key]] = $n;
+			}
+		} else if (is_string($valKeysOrFn)) {
+			foreach ($in as $n) {
+				$out[$n[$key]] = $n[$valKeysOrFn];
+			}
+		} else if (is_array($valKeysOrFn)) {
+			foreach ($in as $n) {
+				$out[$n[$key]] = array_intersect_key($n, $valKeys);
+			}
+		} else if (is_callable($valKeysOrFn)) {
+			foreach ($in as $n) {
+				$out[$n[$key]] = call_user_func($valKeysOrFn, $n);
+			}
+		}
+	} else if (is_array($keys)) {
+		$last_idx  = count($keys) - 1;
+
+		foreach ($in as $n) {
+
+			$ref =& $out;
+			foreach ($keys as $i => $key) {
+
+				$kval = is_string($key) ? $n[$key] : call_user_func($key, $n);
+
+				if (! isset($ref[$kval])) {
+					$ref[$kval] = array();
+				}
+
+				if ($i === $last_idx) {
+					if (is_null($valKeysOrFn)) {
+						$ref[$kval] = $n;
+					} else if (is_string($valKeysOrFn)) {
+						$ref[$kval] = $n[$valKeysOrFn];
+					} else if (is_array($valKeysOrFn)) {
+						$ref[$kval] = array_intersect_key($n, $valKeys);
+					} else if (is_callable($valKeysOrFn)) {
+						$ref[$kval] = call_user_func($valKeysOrFn, $n);
+					}
+				} else {
+					$ref =& $ref[$kval];
+				}
+			}
+		}
+	} else if (is_callable($keys)) {
+
+		foreach ($in as $n) {
+
+			$ckeys = call_user_func($keys, $n);
+			if (is_array($ckeys)) {
+
+				$ref =& $out;
+				foreach ($ckeys as $i => $key) {
+
+					$kval = is_string($key) ? $n[$key] : call_user_func($key, $n);
+
+					if (! isset($ref[$kval])) {
+						$ref[$kval] = array();
+					}
+
+					if ($i === $last_idx) {
+						if (is_null($valKeysOrFn)) {
+							$ref[$kval] = $n;
+						} else if (is_string($valKeysOrFn)) {
+							$ref[$kval] = $n[$valKeysOrFn];
+						} else if (is_array($valKeysOrFn)) {
+							$ref[$kval] = array_intersect_key($n, $valKeys);
+						} else if (is_callable($valKeysOrFn)) {
+							$ref[$kval] = call_user_func($valKeysOrFn, $n);
+						}
+					} else {
+						$ref =& $ref[$kval];
+					}
+				}
+			}
+			else {
+				$kval = $ckeys;
+				if (is_null($valKeysOrFn)) {
+					$out[$kval] = $n;
+				} else if (is_string($valKeysOrFn)) {
+					$out[$kval] = $n[$valKeysOrFn];
+				} else if (is_array($valKeysOrFn)) {
+					$out[$kval] = array_intersect_key($n, $valKeys);
+				} else if (is_callable($valKeysOrFn)) {
+					$out[$kval] = call_user_func($valKeysOrFn, $n);
+				}
+			}
+		}
+	}
+	return $out;
+}, 3);
 
 foreach (get_defined_vars() as $k => $v) {
 	if ($v instanceof \Closure) {
