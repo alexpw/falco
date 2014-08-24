@@ -18,6 +18,9 @@ final class F {
 	const isTruthy = 'Falco\F::isTruthy';
 	const isFalsey = 'Falco\F::isFalsey';
 	const isEmpty  = 'Falco\F::isEmpty';
+	const isPositive = 'Falco\F::isPositive';
+	const isNegative = 'Falco\F::isNegative';
+	const isZero     = 'Falco\F::isZero';
 
 	private static $fns = array();
 	public static function set_fn($fn_name, $f) {
@@ -36,19 +39,58 @@ $alwaysTrue  = function () { return true; };
 $alwaysFalse = function () { return false; };
 $alwaysNull  = function () { return null; };
 
-$isOdd    = function ($x) { return $x % 2 === 1; };
-$isEven   = function ($x) { return $x % 2 === 0; };
+$isOdd    = function ($x) { return abs($x) % 2 === 1; };
+$isEven   = function ($x) { return abs($x) % 2 === 0; };
 $isTruthy = function ($x) { return !! $x; };
 $isFalsey = function ($x) { return ! $x; };
 $isEmpty  = function ($x) { return empty($x); };
+$isPositive = function ($x) { return $x > 0; };
+$isNegative = function ($x) { return $x < 0; };
+$isZero     = function ($x) { return $x === 0; };
 
 $min = function () { return call_user_func_array('min', func_get_args()); };
 $max = function () { return call_user_func_array('max', func_get_args()); };
+/*
+$plus = function () {
+	$args = func_get_args();
+	if (is_array($args[0])) {
+		return array_sum($args[0]);
+	}
+	return array_sum($args);
+};
+$minus = function () {
+	$args = func_get_args();
+	if (is_array($args[0])) {
+		$xs = $args[0];
+	} else {
+		$xs = $args;
+	}
+	$x  = array_shift($xs);
+	return $x - array_sum($xs);
+};
+$multiply = function () {
+	$args = func_get_args();
+	if (is_array($args[0])) {
+		return array_product($args[0]);
+	}
+	return array_product($args);
+};
+$divide = function () {
+	$args = func_get_args();
+	if (is_array($args[0])) {
+		$xs = $args[0];
+	} else {
+		$xs = $args;
+	}
+	$x  = array_shift($xs);
+	return $x - array_sum($xs);
+};
+*/
 
 /**
  * The use of "thread" here refers to
  * http://clojuredocs.org/clojure_core/clojure.core/-%3E%3E
- * and not to a thread of execution, which php does not have.
+ * and not to a thread of execution.
  */
 final class FThread {
 	private $needle;
@@ -140,9 +182,8 @@ $curry = function ($f, $numArgs = null) {
 			$args = array_merge($partialArgs, func_get_args());
 			if (count($args) >= $numArgs) {
 				return call_user_func_array($f, array_slice($args, 0, $numArgs));
-			} else {
-				return $currier($args);
 			}
+			return $currier($args);
 		};
 	};
 	return $currier([]);
@@ -152,10 +193,27 @@ $all = $curry(function ($f, $xs) {
 	foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
 	return true;
 }, 2);
+$any = $curry(function ($f, $xs) {
+	foreach ($xs as $x) if (call_user_func($f, $x)) return true;
+	return false;
+}, 2);
 $none = $curry(function ($f, $xs) {
 	foreach ($xs as $x) if (call_user_func($f, $x)) return false;
 	return true;
 }, 2);
+
+$not = function ($f) {
+	if (is_callable($f)) {
+		return function ($x) use ($f) {
+			return ! call_user_func($f, $x);
+		};
+	} else {
+		return function ($x) use ($f) {
+			return ! ($f === $x);
+		};
+	}
+};
+$opNot = $not;
 
 $opAnd = function () {
 	$fns = func_get_args();
@@ -434,6 +492,19 @@ $takeWhile = $curry(function ($f, $xs) {
 	$out = array();
 	foreach ($xs as $x) {
 		if (! call_user_func($f, $x)) {
+			break;
+		}
+		$out[] = $x;
+	}
+	return $out;
+}, 2);
+
+$takeUntil = $curry(function ($f, $xs) {
+	if (is_string($xs)) $xs = str_split($xs);
+	$out = array();
+	foreach ($xs as $x) {
+		if (call_user_func($f, $x)) {
+			$out[] = $x;
 			break;
 		}
 		$out[] = $x;
