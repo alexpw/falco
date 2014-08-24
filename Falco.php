@@ -12,32 +12,31 @@ final class F {
 
 	const _ = '\F::_';
 
-	const identity = 'Falco\F::identity';
-	const isOdd    = 'Falco\F::isOdd';
-	const isEven   = 'Falco\F::isEven';
-	const isTruthy = 'Falco\F::isTruthy';
-	const isFalsey = 'Falco\F::isFalsey';
-	const isEmpty  = 'Falco\F::isEmpty';
-	const isPositive = 'Falco\F::isPositive';
-	const isNegative = 'Falco\F::isNegative';
-	const isZero     = 'Falco\F::isZero';
-
 	private static $fns = array();
+
 	public static function set_fn($fn_name, $f) {
 		self::$fns[$fn_name] = $f;
 	}
-	public function __get($fn_name) {
-		return self::$fns[$fn_name];
-	}
+
 	public static function __callStatic($method, $args) {
+		if (empty($args)) {
+			return self::$fns[$method];
+		}
 		return call_user_func_array(self::$fns[$method], $args);
 	}
 }
 
-$identity    = function ($x) { return $x; };
-$alwaysTrue  = function () { return true; };
-$alwaysFalse = function () { return false; };
-$alwaysNull  = function () { return null; };
+$identity = function ($x) { return $x; };
+
+$always = function ($x) {
+	return function () use ($x) {
+		$args = func_get_args();
+		return $x;
+	};
+};
+$alwaysTrue  = $always(true);
+$alwaysFalse = $always(false);
+$alwaysNull  = $always(null);
 
 $isOdd    = function ($x) { return abs($x) % 2 === 1; };
 $isEven   = function ($x) { return abs($x) % 2 === 0; };
@@ -50,42 +49,6 @@ $isZero     = function ($x) { return $x === 0; };
 
 $min = function () { return call_user_func_array('min', func_get_args()); };
 $max = function () { return call_user_func_array('max', func_get_args()); };
-/*
-$plus = function () {
-	$args = func_get_args();
-	if (is_array($args[0])) {
-		return array_sum($args[0]);
-	}
-	return array_sum($args);
-};
-$minus = function () {
-	$args = func_get_args();
-	if (is_array($args[0])) {
-		$xs = $args[0];
-	} else {
-		$xs = $args;
-	}
-	$x  = array_shift($xs);
-	return $x - array_sum($xs);
-};
-$multiply = function () {
-	$args = func_get_args();
-	if (is_array($args[0])) {
-		return array_product($args[0]);
-	}
-	return array_product($args);
-};
-$divide = function () {
-	$args = func_get_args();
-	if (is_array($args[0])) {
-		$xs = $args[0];
-	} else {
-		$xs = $args;
-	}
-	$x  = array_shift($xs);
-	return $x - array_sum($xs);
-};
-*/
 
 /**
  * The use of "thread" here refers to
@@ -143,8 +106,14 @@ $curry = function ($f, $numArgs = null) {
 		$numArgs = $r->getNumberOfParameters();
 	}
 	switch ($numArgs) {
-		case 0:
-		case 1: return $f;
+		case 1: return function () use ($f) {
+			$args = func_get_args();
+			if (count($args) === 1) {
+				list($x) = $args;
+				return call_user_func($f, $x);
+			}
+			return call_user_func_array($f, $args);
+		};
 		case 2: return function () use ($f) {
 			$args = func_get_args();
 			if (count($args) === 1) {
@@ -177,8 +146,8 @@ $curry = function ($f, $numArgs = null) {
 			return call_user_func_array($f, $args);
 		};
 	}
-	$currier = function ($partialArgs) use (&$currier, $f, $numArgs) {
-		return function () use (&$currier, $f, $numArgs, $partialArgs) {
+	$currier = function ($partialArgs) use (& $currier, $f, $numArgs) {
+		return function () use (& $currier, $f, $numArgs, $partialArgs) {
 			$args = array_merge($partialArgs, func_get_args());
 			if (count($args) >= $numArgs) {
 				return call_user_func_array($f, array_slice($args, 0, $numArgs));
@@ -188,6 +157,19 @@ $curry = function ($f, $numArgs = null) {
 	};
 	return $currier(array());
 };
+
+$addBy = $curry(function ($n, $x) {
+	return $x + $n;
+}, 2);
+$subtractBy = $curry(function ($n, $x) {
+	return $x - $n;
+}, 2);
+$multiplyBy = $curry(function ($n, $x) {
+	return $x * $n;
+}, 2);
+$divideBy = $curry(function ($n, $x) {
+	return $x / $n;
+}, 2);
 
 $all = $curry(function ($f, $xs) {
 	foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
@@ -325,9 +307,6 @@ $compose = function () {
 	$fns = func_get_args();
 	$c = 'call_user_func';
 	switch (count($fns)) {
-		case 0: throw new \InvalidArgumentException(
-			'compose expects at least 1 parameter, 0 given'
-		);
 		case 1: list($f) = $fns;
 		return function ($x) use ($c, $f) {
 			return $c($f, $x);
@@ -359,11 +338,7 @@ $compose = function () {
 $pipe = function () {
 	$fns = func_get_args();
 	$c   = 'call_user_func';
-	// Optimized arity-specific
 	switch (count($fns)) {
-		case 0: throw new \InvalidArgumentException(
-			'pipe expects at least 1 parameter, 0 given'
-		);
 		case 1: list($f) = $fns;
 		return function ($x) use ($c, $f) {
 			return $c($f, $x);
@@ -396,9 +371,12 @@ $pipe = function () {
 
 $prop = function ($name) {
 	return function ($el) use ($name) {
-		return is_array($el)
-				? $el[$name]
-				: $el->$name;
+		return isset($el[$name]) ? $el[$name] : null;
+	};
+};
+$props = function ($names) {
+	return function ($el) use ($names) {
+		return isset($el[$name]) ? $el[$name] : null;
 	};
 };
 
@@ -849,17 +827,25 @@ $indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
 			foreach ($in as $n) {
 				$out[$n[$key]] = $n;
 			}
-		} else if (is_string($valKeysOrFn)) {
-			foreach ($in as $n) {
-				$out[$n[$key]] = $n[$valKeysOrFn];
-			}
 		} else if (is_array($valKeysOrFn)) {
 			foreach ($in as $n) {
-				$out[$n[$key]] = array_intersect_key($n, $valKeys);
+				$val = array_intersect_key($n, $valKeys);
+				if (count($val)) {
+					$out[$n[$key]] = $val;
+				}
 			}
 		} else if (is_callable($valKeysOrFn)) {
 			foreach ($in as $n) {
-				$out[$n[$key]] = call_user_func($valKeysOrFn, $n);
+				$val = call_user_func($valKeysOrFn, $n);
+				if ($val !== null) {
+					$out[$n[$key]] = $val;
+				}
+			}
+		} else {
+			foreach ($in as $n) {
+				if (isset($n[$valKeysOrFn])) {
+					$out[$n[$key]] = $n[$valKeysOrFn];
+				}
 			}
 		}
 	} else if (is_array($keys)) {
@@ -870,7 +856,18 @@ $indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
 			$ref =& $out;
 			foreach ($keys as $i => $key) {
 
-				$kval = is_string($key) ? $n[$key] : call_user_func($key, $n);
+				$kval = null;
+				if (is_string($key)) {
+					if (isset($n[$key])) {
+						$kval = $n[$key];
+					}
+				} else if (is_callable($key)) {
+					$kval = call_user_func($key, $n);
+				}
+
+				if ($kval === null) {
+					break;
+				}
 
 				if (! isset($ref[$kval])) {
 					$ref[$kval] = array();
@@ -879,12 +876,18 @@ $indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
 				if ($i === $last_idx) {
 					if (is_null($valKeysOrFn)) {
 						$ref[$kval] = $n;
-					} else if (is_string($valKeysOrFn)) {
-						$ref[$kval] = $n[$valKeysOrFn];
 					} else if (is_array($valKeysOrFn)) {
-						$ref[$kval] = array_intersect_key($n, $valKeys);
+						$val = array_intersect_key($n, $valKeys);
+						if (count($val)) {
+							$ref[$kval] = $val;
+						}
 					} else if (is_callable($valKeysOrFn)) {
-						$ref[$kval] = call_user_func($valKeysOrFn, $n);
+						$val = call_user_func($valKeysOrFn, $n);
+						if ($val !== null) {
+							$ref[$kval] = $val;
+						}
+					} else if (isset($n[$valKeysOrFn])) {
+						$ref[$kval] = $n[$valKeysOrFn];
 					}
 				} else {
 					$ref =& $ref[$kval];
@@ -896,12 +899,26 @@ $indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
 		foreach ($in as $n) {
 
 			$ckeys = call_user_func($keys, $n);
-			if (is_array($ckeys)) {
+			if ($ckeys === null) {
+				continue;
+			}
+			else if (is_array($ckeys)) {
 
 				$ref =& $out;
 				foreach ($ckeys as $i => $key) {
 
-					$kval = is_string($key) ? $n[$key] : call_user_func($key, $n);
+					$kval = null;
+					if (is_string($key)) {
+						if (isset($n[$key])) {
+							$kval = $n[$key];
+						}
+					} else if (is_callable($key)) {
+						$kval = call_user_func($key, $n);
+					}
+
+					if ($kval === null) {
+						break;
+					}
 
 					if (! isset($ref[$kval])) {
 						$ref[$kval] = array();
@@ -910,12 +927,18 @@ $indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
 					if ($i === $last_idx) {
 						if (is_null($valKeysOrFn)) {
 							$ref[$kval] = $n;
-						} else if (is_string($valKeysOrFn)) {
-							$ref[$kval] = $n[$valKeysOrFn];
 						} else if (is_array($valKeysOrFn)) {
-							$ref[$kval] = array_intersect_key($n, $valKeys);
+							$val = array_intersect_key($n, $valKeys);
+							if (count($val)) {
+								$ref[$kval] = $val;
+							}
 						} else if (is_callable($valKeysOrFn)) {
-							$ref[$kval] = call_user_func($valKeysOrFn, $n);
+							$val = call_user_func($valKeysOrFn, $n);
+							if ($val !== null) {
+								$ref[$kval] = $val;
+							}
+						} else if (isset($n[$valKeysOrFn])) {
+							$ref[$kval] = $n[$valKeysOrFn];
 						}
 					} else {
 						$ref =& $ref[$kval];
@@ -926,15 +949,24 @@ $indexBy = $curry(function ($keys, $valKeysOrFn, $in) {
 				$kval = $ckeys;
 				if (is_null($valKeysOrFn)) {
 					$out[$kval] = $n;
-				} else if (is_string($valKeysOrFn)) {
-					$out[$kval] = $n[$valKeysOrFn];
-				} else if (is_array($valKeysOrFn)) {
-					$out[$kval] = array_intersect_key($n, $valKeys);
+				}
+				else if (is_array($valKeysOrFn)) {
+					$val = array_intersect_key($n, $valKeys);
+					if (count($val)) {
+						$out[$kval] = $val;
+					}
 				} else if (is_callable($valKeysOrFn)) {
-					$out[$kval] = call_user_func($valKeysOrFn, $n);
+					$val = call_user_func($valKeysOrFn, $n);
+					if ($val !== null) {
+						$out[$kval] = $val;
+					}
+				} else if (isset($n[$valKeysOrFn])) {
+					$out[$kval] = $n[$valKeysOrFn];
 				}
 			}
 		}
+	} else {
+		$out = $in;
 	}
 	return $out;
 }, 3);
