@@ -857,7 +857,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
 						}
 						$ref[$kval] = $val;
 					} else if (is_callable($mixedVals)) {
-						$ref[$kkval] = call_user_func($mixedVals, $n);
+						$ref[$kval] = call_user_func($mixedVals, $n);
 					} else if (isset($n[$mixedVals])) {
 						$ref[$kval] = $n[$mixedVals];
 					}
@@ -997,7 +997,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
 						}
 						$ref[$kval][] = $val;
 					} else if (is_callable($mixedVals)) {
-						$ref[$kkval][] = call_user_func($mixedVals, $n);
+						$ref[$kval][] = call_user_func($mixedVals, $n);
 					} else if (isset($n[$mixedVals])) {
 						$ref[$kval][] = $n[$mixedVals];
 					}
