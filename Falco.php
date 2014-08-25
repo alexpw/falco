@@ -136,7 +136,7 @@ $curry = function ($f, $numArgs = null) {
 	return $currier(array());
 };
 
-$always = function ($x) {
+$always = $constantly = function ($x) {
 	return function () use ($x) {
 		$args = func_get_args();
 		return $x;
@@ -368,47 +368,36 @@ $compose = function () {
 };
 $pipe = function () {
 	$fns = func_get_args();
-	$c   = 'call_user_func';
-	switch (count($fns)) {
-		case 1: list($f) = $fns;
-		return function ($x) use ($c, $f) {
-			return $c($f, $x);
-		};
-		case 2: list($f, $g) = $fns;
-		return function ($x) use ($c, $f, $g) {
-			return $c($g, $c($f, $x));
-		};
-		case 3: list($f, $g, $h) = $fns;
-		return function ($x) use ($c, $f, $g, $h) {
-			return $c($h, $c($g, $c($f, $x)));
-		};
-		case 4: list($f, $g, $h, $i) = $fns;
-		return function ($x) use ($c, $f, $g, $h, $i) {
-			return $c($i, $c($h, $c($g, $c($f, $x))));
-		};
-		case 5: list($f, $g, $h, $i, $j) = $fns;
-		return function ($x) use ($c, $f, $g, $h, $i, $j) {
-			return $c($j, $c($i, $c($h, $c($g, $c($f, $x)))));
-		};
-	}
-	return function ($x) use ($fns) {
-		foreach ($fns as $f) {
-			$x = call_user_func($f, $x);
-		}
-		return $x;
-	};
+	return F::compose(array_reverse($fns));
 };
-
 
 $prop = function ($name) {
 	return function ($el) use ($name) {
 		return isset($el[$name]) ? $el[$name] : null;
 	};
 };
-$props = function ($names) {
-	return function ($el) use ($names) {
-		return isset($el[$name]) ? $el[$name] : null;
+$eqProp = function ($name) {
+	return function ($x, $y) use ($name) {
+		return isset($x[$name]) &&
+				isset($y[$name]) &&
+				$x[$name] === $y[$name];
 	};
+};
+$pick = function ($names) {
+	$names = array_flip($names);
+	return function ($el) use ($names) {
+		return array_intersect_key($el, $names);
+	};
+};
+$omit = function ($names) {
+	$names = array_flip($names);
+	return function ($el) use ($names) {
+		return array_diff_key($el, $names);
+	};
+};
+
+$range = function ($from, $to, $step = 1) {
+	return range($from, $to, $step);
 };
 
 $where = function ($kvs, $strict = true) {
