@@ -592,7 +592,6 @@ $map = $curry(function () {
 	$f    = array_shift($args);
 	$out  = array();
 	switch (count($args)) {
-		case 0: break;
 		case 1:
 			list($xs) = $args;
 			if (is_string($xs)) $xs = str_split($xs);
@@ -661,7 +660,6 @@ $mapkv = $curry(function () {
 	$f    = array_shift($args);
 	$out  = array();
 	switch (count($args)) {
-		case 0: break;
 		case 1:
 			list($xs) = $args;
 			if (is_string($xs)) $xs = str_split($xs);
@@ -689,9 +687,12 @@ $mapkv = $curry(function () {
 			if (is_string($zs)) $zs = str_split($zs);
 			reset($ys); reset($zs);
 			while ($x = each($xs)) {
-				if ($y = each($ys) &&
-					$z = each($zs)) {
-					$out[] = call_user_func($f, $x, $y, $z);
+				if ($y = each($ys)) {
+					if ($z = each($zs)) {
+						$out[] = call_user_func($f, $x, $y, $z);
+					} else {
+						break;
+					}
 				} else {
 					break;
 				}
@@ -703,11 +704,13 @@ $mapkv = $curry(function () {
 			if (is_string($xs)) $xs = str_split($xs);
 			foreach ($args as $i => $arg) {
 				if (is_string($arg)) $args[$i] = str_split($arg);
+				reset($args[$i]);
 			}
+			reset($xs);
 			while ($x = each($xs)) {
 				$kvals = array($x);
-				foreach ($args as $arg) {
-					if ($kv = each($arg)) {
+				for ($i = 0; $i < $numArgs - 1; $i++) {
+					if ($kv = each($args[$i])) {
 						$kvals[] = $kv;
 					}
 				}
