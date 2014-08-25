@@ -461,18 +461,44 @@ $pipe = function () {
 	return F::apply(F::compose(), $fns);
 };
 
-$prop = function ($name) {
-	return function ($el) use ($name) {
-		return isset($el[$name]) ? $el[$name] : null;
+$useOver = function ($used, $over) {
+	return F::curry(function ($overArg, $usedArg) use ($used, $over) {
+		$overNow = call_user_func($over, $overArg);
+		return call_user_func($used, $overNow, $usedArg);
+	}, 2);
+};
+
+$useWith = function () {
+	$transformers = func_get_args();
+	$fn = array_shift($transformers);
+	return F::curry(function () use ($fn, $transformers) {
+		$args = func_get_args();
+		foreach ($transformers as $i => $trans) {
+			$args[$i] = call_user_func($trans, $args[$i]);
+		}
+		return call_user_func_array($fn, $args);
+	}, count($transformers));
+};
+
+$once = function ($fn) {
+	$called = false;
+	$result = null;
+	return function () use ($fn, & $called, & $result) {
+		if ($called) {
+			return $result;
+		}
+		$called = true;
+		$result = call_user_func_array($fn, func_get_args());
+		return $result;
 	};
 };
-$eqProp = function ($name) {
-	return function ($x, $y) use ($name) {
-		return isset($x[$name]) &&
-				isset($y[$name]) &&
-				$x[$name] === $y[$name];
-	};
-};
+
+$prop = $curry(function ($name, $el) {
+	return isset($el[$name]) ? $el[$name] : null;
+}, 2);
+$propEq = $curry(function ($key, $val, $arr) {
+	return isset($arr[$key]) ? $arr[$key] === $val : false;
+}, 3);
 
 $pick = function ($names) {
 	$names = array_flip($names);
@@ -679,8 +705,8 @@ $map = $curry(function () {
 		case 1:
 			list($xs) = $args;
 			if (is_string($xs)) $xs = str_split($xs);
-			foreach ($xs as $x) {
-				$out[] = call_user_func($f, $x);
+			foreach ($xs as $k => $x) {
+				$out[$k] = call_user_func($f, $x);
 			}
 			break;
 		case 2:
@@ -748,7 +774,7 @@ $mapkv = $curry(function () {
 			list($xs) = $args;
 			if (is_string($xs)) $xs = str_split($xs);
 			while ($x = each($xs)) {
-				$out[] = call_user_func($f, $x);
+				$out[$x['key']] = call_user_func($f, $x);
 			}
 			break;
 		case 2:
