@@ -85,19 +85,14 @@ $curry = function ($f, $numArgs = null) {
 	}
 	switch ($numArgs) {
 		case 1: return function () use ($f) {
-			$args = func_get_args();
-			if (count($args) === 1) {
-				list($x) = $args;
-				return call_user_func($f, $x);
-			}
-			return call_user_func_array($f, $args);
+			return call_user_func_array($f, func_get_args());
 		};
 		case 2: return function () use ($f) {
 			$args = func_get_args();
 			if (count($args) === 1) {
-				list($x) = $args;
-				return function ($y) use ($x, $f) {
-					return call_user_func($f, $x, $y);
+				return function () use ($f, $args) {
+					$args = array_merge($args, func_get_args());
+					return call_user_func_array($f, $args);
 				};
 			}
 			return call_user_func_array($f, $args);
@@ -164,6 +159,21 @@ $addBy      = $curry(function ($n, $x) { return $x + $n; }, 2);
 $subtractBy = $curry(function ($n, $x) { return $x - $n; }, 2);
 $multiplyBy = $curry(function ($n, $x) { return $x * $n; }, 2);
 $divideBy   = $curry(function ($n, $x) { return $x / $n; }, 2);
+
+$sum = function () {
+	$args = func_get_args();
+	if (is_array($args[0])) {
+		return array_sum($args[0]);
+	}
+	return array_sum($args);
+};
+$product = function () {
+	$args = func_get_args();
+	if (is_array($args[0])) {
+		return array_product($args[0]);
+	}
+	return array_product($args);
+};
 
 $all = $curry(function ($f, $xs) {
 	foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
@@ -552,6 +562,14 @@ $skipUntil = $curry(function ($f, $xs) {
 	return array_slice($xs, $i);
 }, 2);
 
+$repeat = $curry(function ($el, $times) {
+	$out = array();
+	for ($i = 0; $i < $times; $i++) {
+		$out[] = $el;
+	}
+	return $out;
+}, 2);
+
 $concat = function () {
 	$args = func_get_args();
 	if (count($args) === 0) {
@@ -576,9 +594,7 @@ $map = $curry(function () {
 		case 0: break;
 		case 1:
 			list($xs) = $args;
-			if (is_string($xs)) {
-				$xs = str_split($xs);
-			}
+			if (is_string($xs)) $xs = str_split($xs);
 			foreach ($xs as $x) {
 				$out[] = call_user_func($f, $x);
 			}
@@ -590,7 +606,7 @@ $map = $curry(function () {
 			reset($ys);
 			foreach ($xs as $x) {
 				if ($y = each($ys)) {
-					$out[] = call_user_func($f, $x, $y['value']);
+					$out[] = call_user_func($f, $x, $y[1]);
 				} else {
 					break;
 				}
@@ -603,9 +619,12 @@ $map = $curry(function () {
 			if (is_string($zs)) $zs = str_split($zs);
 			reset($ys); reset($zs);
 			foreach ($xs as $x) {
-				if ($y = each($ys) &&
-					$z = each($zs)) {
-					$out[] = call_user_func($f, $x, $y['value'], $z['value']);
+				if (list($yk, $yv) = each($ys)) {
+					if (list($zk, $zv) = each($zs)) {
+						$out[] = call_user_func($f, $x, $yv, $zv);
+					} else {
+						break;
+					}
 				} else {
 					break;
 				}
@@ -617,12 +636,13 @@ $map = $curry(function () {
 			if (is_string($xs)) $xs = str_split($xs);
 			foreach ($args as $i => $arg) {
 				if (is_string($arg)) $args[$i] = str_split($arg);
+				else reset($arg);
 			}
 			foreach ($xs as $x) {
 				$vals = array($x);
-				foreach ($args as $arg) {
-					if ($v = each($arg)) {
-						$vals[] = $v['value'];
+				for ($i = 0; $i < $numArgs - 1; $i++) {
+					if (list($k, $v) = each($args[$i])) {
+						$vals[] = $v;
 					}
 				}
 				if (count($vals) !== $numArgs) {
@@ -701,14 +721,12 @@ $mapkv = $curry(function () {
 }, 2);
 
 $mapcat = $curry(function () {
-	global $concat, $map;
 	$fn_with_args = func_get_args();
-	return call_user_func($concat, call_user_func_array($map, $fn_with_args));
+	return call_user_func(F::concat(), call_user_func_array(F::map(), $fn_with_args));
 }, 2);
 $mapcatkv = $curry(function () {
-	global $concat, $map;
 	$fn_with_args = func_get_args();
-	return call_user_func($concat, call_user_func_array($mapkv, $fn_with_args));
+	return call_user_func(F::concat(), call_user_func_array(F::mapkv(), $fn_with_args));
 }, 2);
 
 $filter = $curry(function ($f, $xs) {
@@ -815,6 +833,7 @@ $partitionBy = $curry(function ($f, $xs) {
  *
  * @param array $in An array of arrays or objects implementing ArrayAccess.
  *
+ * @return array
  *
  * @examples
  *
@@ -955,6 +974,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
  *
  * @param array $in An array of arrays or objects implementing ArrayAccess.
  *
+ * @return array
  *
  * @examples
  *
@@ -962,16 +982,16 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
  *        ['id' => 5, 'name' => 'john']];
  *
  * groupBy('id', null, $in);
- * => [3 => ['id' => 3, 'name' => 'alex'],
- *     5 => ['id' => 5, 'name' => 'john']]
+ * => [3 => [['id' => 3, 'name' => 'alex']],
+ *     5 => [['id' => 5, 'name' => 'john']]]
  *
  * groupBy('id', 'name', $in);
- * => [3 => ['name' => 'alex'],
- *     5 => ['name' => 'john']]
+ * => [3 => [['name' => 'alex']],
+ *     5 => [['name' => 'john']]]
  *
  * groupBy(['name', 'id'], null, $in)
- * => ['alex' => [3 => ['id' => 3, 'name' => 'alex']],
- *     'john' => [5 => ['id' => 5, 'name' => 'john']]]
+ * => ['alex' => [3 => [['id' => 3, 'name' => 'alex']]],
+ *     'john' => [5 => [['id' => 5, 'name' => 'john']]]]
  */
 $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
 	$out = array();
