@@ -146,7 +146,8 @@ $identity = function ($x) { return $x; };
 $isOdd    = function ($x) { return abs($x) % 2 === 1; };
 $isEven   = function ($x) { return abs($x) % 2 === 0; };
 $isTruthy = function ($x) { return !! $x; };
-$isFalsey = function ($x) { return ! $x; };
+$isFalsy  = function ($x) { return ! $x; };
+$isFalsey = $isFalsy;
 $isEmpty  = function ($x) { return empty($x); };
 $isPositive = function ($x) { return $x > 0; };
 $isNegative = function ($x) { return $x < 0; };
@@ -185,6 +186,84 @@ $any = $curry(function ($f, $xs) {
 }, 2);
 $none = $curry(function ($f, $xs) {
 	foreach ($xs as $x) if (call_user_func($f, $x)) return false;
+	return true;
+}, 2);
+
+$opEq = $eq = $curry(function () {
+	$args = func_get_args();
+	switch (count($args)) {
+		case 2: return $args[0] === $args[1];
+		case 3: return ($args[0] === $args[1]) && ($args[1] === $args[2]);
+	}
+	foreach ($args as $i => $v) {
+		if (! isset($args[$i + 1])) break;
+		$next = $args[$i + 1];
+		if ($v !== $next) {
+			return false;
+		}
+	}
+	return true;
+}, 2);
+
+$opLt = $lt = $curry(function () {
+	$args = func_get_args();
+	switch (count($args)) {
+		case 2: return $args[0] < $args[1];
+		case 3: return ($args[0] < $args[1]) && ($args[1] < $args[2]);
+	}
+	foreach ($args as $i => $v) {
+		if (! isset($args[$i + 1])) break;
+		$next = $args[$i + 1];
+		if ($v >= $next) {
+			return false;
+		}
+	}
+	return true;
+}, 2);
+$opLte = $lte = $curry(function () {
+	$args = func_get_args();
+	switch (count($args)) {
+		case 2: return $args[0] <= $args[1];
+		case 3: return ($args[0] <= $args[1]) && ($args[1] <= $args[2]);
+	}
+	foreach ($args as $i => $v) {
+		if (! isset($args[$i + 1])) break;
+		$next = $args[$i + 1];
+		if ($v > $next) {
+			return false;
+		}
+	}
+	return true;
+}, 2);
+
+$opGt = $gt = $curry(function () {
+	$args = func_get_args();
+	switch (count($args)) {
+		case 2: return $args[0] > $args[1];
+		case 3: return ($args[0] > $args[1]) && ($args[1] > $args[2]);
+	}
+	foreach ($args as $i => $v) {
+		if (! isset($args[$i + 1])) break;
+		$next = $args[$i + 1];
+		if ($v <= $next) {
+			return false;
+		}
+	}
+	return true;
+}, 2);
+$opGte = $gte = $curry(function () {
+	$args = func_get_args();
+	switch (count($args)) {
+		case 2: return $args[0] >= $args[1];
+		case 3: return ($args[0] >= $args[1]) && ($args[1] >= $args[2]);
+	}
+	foreach ($args as $i => $v) {
+		if (! isset($args[$i + 1])) break;
+		$next = $args[$i + 1];
+		if ($v < $next) {
+			return false;
+		}
+	}
 	return true;
 }, 2);
 
@@ -394,6 +473,7 @@ $eqProp = function ($name) {
 				$x[$name] === $y[$name];
 	};
 };
+
 $pick = function ($names) {
 	$names = array_flip($names);
 	return function ($el) use ($names) {
@@ -406,6 +486,10 @@ $omit = function ($names) {
 		return array_diff_key($el, $names);
 	};
 };
+$project = $curry(function ($names, $data) {
+	return F::map(F::pick($names), $data);
+}, 2);
+
 
 $range = function ($from, $to, $step = 1) {
 	return range($from, $to, $step);

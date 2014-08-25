@@ -53,8 +53,8 @@ class NumeberEqualityTest extends PHPUnit_Framework_TestCase {
 	/**
 	 * @dataProvider numberProvider
 	 */
-	public function testFalsey($a) {
-		$this->assertEquals(F::isFalsey($a), !$a);
+	public function testFalsy($a) {
+		$this->assertEquals(F::isFalsy($a), !$a);
 	}
 	/**
 	 * @dataProvider numberProvider
