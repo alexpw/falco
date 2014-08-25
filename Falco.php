@@ -378,7 +378,8 @@ $compose = function () {
 };
 $pipe = function () {
 	$fns = func_get_args();
-	return F::compose(array_reverse($fns));
+	$fns = array_reverse($fns);
+	return F::apply(F::compose(), $fns);
 };
 
 $prop = function ($name) {

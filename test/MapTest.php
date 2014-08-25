@@ -14,13 +14,13 @@ class MapTest extends PHPUnit_Framework_TestCase {
 		$r10  = F::repeat(10);
 		$data = array();
 
-		foreach (range(0, 4) as $n) {
+		foreach (range(0, 10) as $n) {
 
 			$data[] = $r10(10 - $n);
 
 			$rs = F::apply(F::map(F::sum()), $data);
 
-			$sum = array_sum($rs);
+			$sum = F::sum($rs);
 
 			/*
 				1 * (100 - (10 * 0)) => 100
