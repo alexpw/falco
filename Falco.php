@@ -33,4 +33,57 @@ final class F {
 	}
 }
 
+F::set_fn('curry', function ($f, $numArgs = null) {
+    if ($numArgs === null) {
+        $r = new \ReflectionFunction($f);
+        $numArgs = $r->getNumberOfParameters();
+    }
+    switch ($numArgs) {
+        case 1: return function () use ($f) {
+            return call_user_func_array($f, func_get_args());
+        };
+        case 2: return function () use ($f) {
+            $args = func_get_args();
+            if (count($args) === 1) {
+                return function () use ($f, $args) {
+                    $args = array_merge($args, func_get_args());
+                    return call_user_func_array($f, $args);
+                };
+            }
+            return call_user_func_array($f, $args);
+        };
+        case 3: return function () use ($f) {
+            $args = func_get_args();
+            if (count($args) === 1) {
+                return function () use ($args, $f) {
+                    $args = array_merge($args, func_get_args());
+                    if (count($args) === 2) {
+                        return function ($z) use ($args, $f) {
+                            list($x, $y) = $args;
+                            return call_user_func($f, $x, $y, $z);
+                        };
+                    }
+                    return call_user_func_array($f, $args);
+                };
+            } else if (count($args) === 2) {
+                return function ($z) use ($args, $f) {
+                    list($x, $y) = $args;
+                    return call_user_func($f, $x, $y, $z);
+                };
+            }
+            return call_user_func_array($f, $args);
+        };
+    }
+    $currier = function ($partialArgs) use (& $currier, $f, $numArgs) {
+        return function () use (& $currier, $f, $numArgs, $partialArgs) {
+            $args = array_merge($partialArgs, func_get_args());
+            if (count($args) >= $numArgs) {
+                return call_user_func_array($f, array_slice($args, 0, $numArgs));
+            }
+            return $currier($args);
+        };
+    };
+    return $currier(array());
+});
+
 F::load('core');

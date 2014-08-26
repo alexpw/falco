@@ -38,70 +38,17 @@ $thread = function ($needle) {
 };
 
 $partial = function () {
-	$args = func_get_args();
-	$f    = array_shift($args);
-	return function () use ($f, $args) {
-		$rest = func_get_args();
-		foreach ($args as $i => $a) {
-			if ($a === F::_) {
-				$args[$i] = array_shift($rest);
-			}
-		}
-		return call_user_func_array($f, array_merge($args, $rest));
-	};
-};
-
-$curry = function ($f, $numArgs = null) {
-	if ($numArgs === null) {
-		$r = new \ReflectionFunction($f);
-		$numArgs = $r->getNumberOfParameters();
-	}
-	switch ($numArgs) {
-		case 1: return function () use ($f) {
-			return call_user_func_array($f, func_get_args());
-		};
-		case 2: return function () use ($f) {
-			$args = func_get_args();
-			if (count($args) === 1) {
-				return function () use ($f, $args) {
-					$args = array_merge($args, func_get_args());
-					return call_user_func_array($f, $args);
-				};
-			}
-			return call_user_func_array($f, $args);
-		};
-		case 3: return function () use ($f) {
-			$args = func_get_args();
-			if (count($args) === 1) {
-				return function () use ($args, $f) {
-					$args = array_merge($args, func_get_args());
-					if (count($args) === 2) {
-						return function ($z) use ($args, $f) {
-							list($x, $y) = $args;
-							return call_user_func($f, $x, $y, $z);
-						};
-					}
-					return call_user_func_array($f, $args);
-				};
-			} else if (count($args) === 2) {
-				return function ($z) use ($args, $f) {
-					list($x, $y) = $args;
-					return call_user_func($f, $x, $y, $z);
-				};
-			}
-			return call_user_func_array($f, $args);
-		};
-	}
-	$currier = function ($partialArgs) use (& $currier, $f, $numArgs) {
-		return function () use (& $currier, $f, $numArgs, $partialArgs) {
-			$args = array_merge($partialArgs, func_get_args());
-			if (count($args) >= $numArgs) {
-				return call_user_func_array($f, array_slice($args, 0, $numArgs));
-			}
-			return $currier($args);
-		};
-	};
-	return $currier(array());
+    $args = func_get_args();
+    $f    = array_shift($args);
+    return function () use ($f, $args) {
+        $rest = func_get_args();
+        foreach ($args as $i => $a) {
+            if ($a === F::_) {
+                $args[$i] = array_shift($rest);
+            }
+        }
+        return call_user_func_array($f, array_merge($args, $rest));
+    };
 };
 
 $always = $constantly = function ($x) {
@@ -129,10 +76,10 @@ $isZero     = function ($x) { return $x === 0; };
 $min = function () { return call_user_func_array('min', func_get_args()); };
 $max = function () { return call_user_func_array('max', func_get_args()); };
 
-$addBy      = $curry(function ($n, $x) { return $x + $n; }, 2);
-$subtractBy = $curry(function ($n, $x) { return $x - $n; }, 2);
-$multiplyBy = $curry(function ($n, $x) { return $x * $n; }, 2);
-$divideBy   = $curry(function ($n, $x) { return $x / $n; }, 2);
+$addBy      = F::curry(function ($n, $x) { return $x + $n; }, 2);
+$subtractBy = F::curry(function ($n, $x) { return $x - $n; }, 2);
+$multiplyBy = F::curry(function ($n, $x) { return $x * $n; }, 2);
+$divideBy   = F::curry(function ($n, $x) { return $x / $n; }, 2);
 
 $sum = function () {
 	$args = func_get_args();
@@ -149,20 +96,20 @@ $product = function () {
 	return array_product($args);
 };
 
-$all = $curry(function ($f, $xs) {
+$all = F::curry(function ($f, $xs) {
 	foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
 	return true;
 }, 2);
-$any = $curry(function ($f, $xs) {
+$any = F::curry(function ($f, $xs) {
 	foreach ($xs as $x) if (call_user_func($f, $x)) return true;
 	return false;
 }, 2);
-$none = $curry(function ($f, $xs) {
+$none = F::curry(function ($f, $xs) {
 	foreach ($xs as $x) if (call_user_func($f, $x)) return false;
 	return true;
 }, 2);
 
-$opEq = $eq = $curry(function () {
+$opEq = $eq = F::curry(function () {
 	$args = func_get_args();
 	switch (count($args)) {
 		case 2: return $args[0] === $args[1];
@@ -178,7 +125,7 @@ $opEq = $eq = $curry(function () {
 	return true;
 }, 2);
 
-$opLt = $lt = $curry(function () {
+$opLt = $lt = F::curry(function () {
 	$args = func_get_args();
 	switch (count($args)) {
 		case 2: return $args[0] < $args[1];
@@ -193,7 +140,7 @@ $opLt = $lt = $curry(function () {
 	}
 	return true;
 }, 2);
-$opLte = $lte = $curry(function () {
+$opLte = $lte = F::curry(function () {
 	$args = func_get_args();
 	switch (count($args)) {
 		case 2: return $args[0] <= $args[1];
@@ -209,7 +156,7 @@ $opLte = $lte = $curry(function () {
 	return true;
 }, 2);
 
-$opGt = $gt = $curry(function () {
+$opGt = $gt = F::curry(function () {
 	$args = func_get_args();
 	switch (count($args)) {
 		case 2: return $args[0] > $args[1];
@@ -224,7 +171,7 @@ $opGt = $gt = $curry(function () {
 	}
 	return true;
 }, 2);
-$opGte = $gte = $curry(function () {
+$opGte = $gte = F::curry(function () {
 	$args = func_get_args();
 	switch (count($args)) {
 		case 2: return $args[0] >= $args[1];
@@ -306,7 +253,7 @@ $count = function ($xs) {
 	if (is_array($xs))  return count($xs);
 	if (is_object($xs)) return count(get_object_vars($xs));
 };
-$countBy = $curry(function ($f, $xs) {
+$countBy = F::curry(function ($f, $xs) {
 	if (is_string($xs)) return str_split($xs);
 	$cnt = 0;
 	foreach ($xs as $x) {
@@ -347,9 +294,9 @@ $fromPairs = function ($xs) {
 $sort    = function ($in) { sort($in);  return $in; };
 $ksort   = function ($in) { ksort($in); return $in; };
 $asort   = function ($in) { asort($in); return $in; };
-$sortBy  = $curry(function ($cmp, $in) { usort($in, $cmp);  return $in; }, 2);
-$ksortBy = $curry(function ($cmp, $in) { uksort($in, $cmp); return $in; }, 2);
-$asortBy = $curry(function ($cmp, $in) { uasort($in, $cmp); return $in; }, 2);
+$sortBy  = F::curry(function ($cmp, $in) { usort($in, $cmp);  return $in; }, 2);
+$ksortBy = F::curry(function ($cmp, $in) { uksort($in, $cmp); return $in; }, 2);
+$asortBy = F::curry(function ($cmp, $in) { uasort($in, $cmp); return $in; }, 2);
 
 $reverse = function ($in) {
 	switch (gettype($in)) {
@@ -361,7 +308,7 @@ $reverse = function ($in) {
 	return array_reverse($arr);
 };
 
-$contains = $curry(function ($needle, $haystack) {
+$contains = F::curry(function ($needle, $haystack) {
 	switch (gettype($haystack)) {
 		case 'array':  return in_array($needle, $haystack);
 		case 'string': return strpos($haystack, $needle) !== false;
@@ -371,7 +318,7 @@ $contains = $curry(function ($needle, $haystack) {
 	}
 	return false;
 }, 2);
-$containsBy = $curry(function ($f, $xs) {
+$containsBy = F::curry(function ($f, $xs) {
 	if (is_string($xs)) return str_split($xs);
 	foreach ($xs as $x) {
 		if (call_user_func($f, $x)) {
@@ -466,10 +413,10 @@ $once = function ($fn) {
 	};
 };
 
-$prop = $curry(function ($name, $el) {
+$prop = F::curry(function ($name, $el) {
 	return isset($el[$name]) ? $el[$name] : null;
 }, 2);
-$propEq = $curry(function ($key, $val, $arr) {
+$propEq = F::curry(function ($key, $val, $arr) {
 	return isset($arr[$key]) ? $arr[$key] === $val : false;
 }, 3);
 
@@ -485,7 +432,7 @@ $omit = function ($names) {
 		return array_diff_key($el, $names);
 	};
 };
-$project = $curry(function ($names, $data) {
+$project = F::curry(function ($names, $data) {
 	return F::map(F::pick($names), $data);
 }, 2);
 
@@ -552,11 +499,11 @@ $where = function ($kvs, $strict = true) {
 	}
 };
 
-$nth = $curry(function ($n, $xs) {
+$nth = F::curry(function ($n, $xs) {
 	return isset($xs[$n]) ? $xs[$n] : null;
 }, 2);
 
-$take = $curry(function ($n, $xs) {
+$take = F::curry(function ($n, $xs) {
 	switch (gettype($xs)) {
 		case 'array':  return array_slice($xs, 0, $n);
 		case 'string': return substr($xs, 0, $n);
@@ -577,7 +524,14 @@ $take = $curry(function ($n, $xs) {
 $first  = $head = $take(1);
 $ffirst = $compose($first, $first);
 
-$skip = $curry(function ($n, $xs) {
+$last = function ($xs) {
+	if (is_string($xs)) {
+		return $xs[strlen($xs) - 1];
+	}
+	return $xs[count($xs) - 1];
+};
+
+$skip = F::curry(function ($n, $xs) {
 	switch (gettype($xs)) {
 		case 'array':  return array_slice($xs, $n);
 		case 'string': return substr($xs, $n);
@@ -599,7 +553,7 @@ $skip = $curry(function ($n, $xs) {
 $rest  = $tail = $skip(1);
 $frest = $compose($first, $rest);
 
-$takeWhile = $curry(function ($f, $xs) {
+$takeWhile = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
 	$out = array();
 	foreach ($xs as $x) {
@@ -611,7 +565,7 @@ $takeWhile = $curry(function ($f, $xs) {
 	return $out;
 }, 2);
 
-$takeUntil = $curry(function ($f, $xs) {
+$takeUntil = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
 	$out = array();
 	foreach ($xs as $x) {
@@ -624,7 +578,7 @@ $takeUntil = $curry(function ($f, $xs) {
 	return $out;
 }, 2);
 
-$skipWhile = $curry(function ($f, $xs) {
+$skipWhile = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
 	$i = 0;
 	foreach ($xs as $x) {
@@ -635,7 +589,7 @@ $skipWhile = $curry(function ($f, $xs) {
 	return array_slice($xs, $i);
 }, 2);
 
-$skipUntil = $curry(function ($f, $xs) {
+$skipUntil = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
 	$i = 0;
 	foreach ($xs as $x) {
@@ -646,11 +600,11 @@ $skipUntil = $curry(function ($f, $xs) {
 	return array_slice($xs, $i);
 }, 2);
 
-$repeat = $curry(function ($el, $times) {
+$repeat = F::curry(function ($el, $times) {
 	return array_fill(0, $times, $el);
 }, 2);
 
-$zipkv = $curry(function ($keys, $vals) {
+$zipkv = F::curry(function ($keys, $vals) {
 	return array_combine($keys, $vals);
 }, 2);
 
@@ -670,7 +624,7 @@ $concat = function () {
 	return $args;
 };
 
-$map = $curry(function () {
+$map = F::curry(function () {
 	$args = func_get_args();
 	$f    = array_shift($args);
 	$out  = array();
@@ -738,7 +692,7 @@ $map = $curry(function () {
 	return $out;
 }, 2);
 
-$mapkv = $curry(function () {
+$mapkv = F::curry(function () {
 	$args = func_get_args();
 	$f    = array_shift($args);
 	$out  = array();
@@ -807,16 +761,16 @@ $mapkv = $curry(function () {
 	return $out;
 }, 2);
 
-$mapcat = $curry(function () {
+$mapcat = F::curry(function () {
 	$fn_with_args = func_get_args();
 	return call_user_func(F::concat(), call_user_func_array(F::map(), $fn_with_args));
 }, 2);
-$mapcatkv = $curry(function () {
+$mapcatkv = F::curry(function () {
 	$fn_with_args = func_get_args();
 	return call_user_func(F::concat(), call_user_func_array(F::mapkv(), $fn_with_args));
 }, 2);
 
-$filter = $curry(function ($f, $xs) {
+$filter = F::curry(function ($f, $xs) {
 	$out = array();
 	foreach ($xs as $x) {
 		if (call_user_func($f, $x)) {
@@ -825,7 +779,7 @@ $filter = $curry(function ($f, $xs) {
 	}
 	return $out;
 }, 2);
-$filterkv = $curry(function ($f, $xs) {
+$filterkv = F::curry(function ($f, $xs) {
 	$out = array();
 	while ($x = each($xs)) {
 		if (call_user_func($f, $x)) {
@@ -838,7 +792,7 @@ $filterkv = $curry(function ($f, $xs) {
 $ffilter   = $compose($filter, $first);
 $ffilterkv = $compose($filterkv, $first);
 
-$remove = $curry(function ($f, $xs) {
+$remove = F::curry(function ($f, $xs) {
 	$out = array();
 	foreach ($xs as $x) {
 		if (! call_user_func($f, $x)) {
@@ -847,7 +801,7 @@ $remove = $curry(function ($f, $xs) {
 	}
 	return $out;
 }, 2);
-$removekv = $curry(function ($f, $xs) {
+$removekv = F::curry(function ($f, $xs) {
 	$out = array();
 	while ($x = each($xs)) {
 		if (! call_user_func($f, $x)) {
@@ -857,14 +811,14 @@ $removekv = $curry(function ($f, $xs) {
 	return $out;
 }, 2);
 
-$reduce = $curry(function ($f, $initialValue, $xs) {
+$reduce = F::curry(function ($f, $initialValue, $xs) {
 	$accumulator = $initialValue;
 	foreach ($xs as $x) {
 		$accumulator = call_user_func($f, $accumulator, $x);
 	}
 	return $accumulator;
 }, 2);
-$reducekv = $curry(function ($f, $initialValue, $xs) {
+$reducekv = F::curry(function ($f, $initialValue, $xs) {
 	$accumulator = $initialValue;
 	while ($x = each($xs)) {
 		$accumulator = call_user_func($f, $accumulator, $x);
@@ -872,7 +826,7 @@ $reducekv = $curry(function ($f, $initialValue, $xs) {
 	return $accumulator;
 }, 2);
 
-$partitionBy = $curry(function ($f, $xs) {
+$partitionBy = F::curry(function ($f, $xs) {
 	$out = array();
 	$flag = null;
 	$group = array();
@@ -939,7 +893,7 @@ $partitionBy = $curry(function ($f, $xs) {
  * => ['alex' => [3 => ['id' => 3, 'name' => 'alex']],
  *     'john' => [5 => ['id' => 5, 'name' => 'john']]]
  */
-$indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
+$indexBy = F::curry(function ($mixedKeys, $mixedVals, $in) {
 	$out = array();
 
 	if (is_array($mixedKeys)) {
@@ -1080,7 +1034,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
  * => ['alex' => [3 => [['id' => 3, 'name' => 'alex']]],
  *     'john' => [5 => [['id' => 5, 'name' => 'john']]]]
  */
-$groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
+$groupBy = F::curry(function ($mixedKeys, $mixedVals, $in) {
 	$out = array();
 
 	if (is_array($mixedKeys)) {
