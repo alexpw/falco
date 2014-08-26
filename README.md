@@ -3,10 +3,18 @@ falco
 
 Falco is a partial Function Application Library emphasizing COmposition for PHP.
 
- collection of higher-order utility functions, most of which are curried.
+In other words, it is a collection of higher-order functions, most of which are curried.
+
+They are designed to work together.
 
 # Install
 
-composer: alexpw/falco
+Clone the source
 
-# Usage
+or
+
+Composer: TBD
+
+# Docs
+
+Annotated source with examples in progress.

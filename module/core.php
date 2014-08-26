@@ -4,82 +4,100 @@ namespace Falco\module\core;
 use Falco\F as F;
 
 /**
- * The use of "thread" here refers to
- * http://clojuredocs.org/clojure_core/clojure.core/-%3E%3E
- * and not to a thread of execution.
+ * The use of "thread" here refers to [->>](http://clojuredocs.org/clojure_core/clojure.core/-%3E%3E) and not to a thread of execution.
  */
 final class FThread {
-    private $needle;
-    public function __construct($needle) {
-        $this->needle = $needle;
-    }
-    public function __call($method, $args) {
-        if ($method === 'value') {
-            return $this->needle;
-        } else {
-            $injected = false;
-            foreach ($args as $i => $arg) {
-                if ($arg === F::_) {
-                    $args[$i] = $this->needle;
-                    $injected = true;
-                    break;
-                }
-            }
-            if (! $injected) {
-                $args[] = $this->needle;
-            }
-            $this->needle = call_user_func_array("Falco\F::$method", $args);
-            return $this;
-        }
-    }
+	private $needle;
+	public function __construct($needle) {
+		$this->needle = $needle;
+	}
+	public function __call($method, $args) {
+		// A pseudo-method that returns the transformed needle and ends the thread.
+		if ($method === 'value') {
+			return $this->needle;
+		} else {
+			// The needle can be positioned anywhere in the arg list by injecting
+			// it with the placeholder constant.
+			$injected = false;
+			foreach ($args as $i => $arg) {
+				if ($arg === F::_) {
+					$args[$i] = $this->needle;
+					$injected = true;
+					break;
+				}
+			}
+			// By default, the needle will be the last arg passed to the method.
+			if (! $injected) {
+				$args[] = $this->needle;
+			}
+			$this->needle = call_user_func_array("Falco\F::$method", $args);
+			return $this;
+		}
+	}
 }
+
+// Absent macros that facilitate the elegance of clojure's [->>](http://clojuredocs.org/clojure_core/clojure.core/-%3E%3E), instead, this emulates Underscore's [chain](http://underscorejs.org/#chain).
 $thread = function ($needle) {
-    return new FThread($needle);
+	return new FThread($needle);
 };
 
+/**
+ * Takes a function f and fewer than the normal arguments to f, and
+ * returns a fn that takes a variable number of additional args. When
+ * called, the returned function calls f with args + additional args.
+ */
 $partial = function () {
-    $args = func_get_args();
-    $f    = array_shift($args);
-    return function () use ($f, $args) {
-        $rest = func_get_args();
-        foreach ($args as $i => $a) {
-            if ($a === F::_) {
-                $args[$i] = array_shift($rest);
-            }
-        }
-        return call_user_func_array($f, array_merge($args, $rest));
-    };
+	$args = func_get_args();
+	$f    = array_shift($args);
+	return function () use ($f, $args) {
+		$rest = func_get_args();
+		foreach ($args as $i => $a) {
+			if ($a === F::_) {
+				$args[$i] = array_shift($rest);
+			}
+		}
+		return call_user_func_array($f, array_merge($args, $rest));
+	};
 };
 
+/**
+ * Create a fn that always returns $x. Example: F::always(true);
+ */
 $always = $constantly = function ($x) {
 	return function () use ($x) {
 		$args = func_get_args();
 		return $x;
 	};
 };
-$alwaysTrue  = $always(true);
-$alwaysFalse = $always(false);
-$alwaysNull  = $always(null);
-$alwaysZero  = $always(0);
 
 $identity = function ($x) { return $x; };
 $isOdd    = function ($x) { return abs($x) % 2 === 1; };
 $isEven   = function ($x) { return abs($x) % 2 === 0; };
 $isTruthy = function ($x) { return !! $x; };
 $isFalsy  = function ($x) { return ! $x; };
-$isFalsey = $isFalsy;
+$isFalsey = $isFalsy; // For those that disagree with or can't remember how to spell it.
 $isEmpty  = function ($x) { return empty($x); };
 $isPositive = function ($x) { return $x > 0; };
 $isNegative = function ($x) { return $x < 0; };
 $isZero     = function ($x) { return $x === 0; };
 
-$min = function () { return call_user_func_array('min', func_get_args()); };
-$max = function () { return call_user_func_array('max', func_get_args()); };
+$min = 'min';
+$max = 'max';
 
+/**
+ * Creates a math fn with a known value. For example:<br />
+ * `$doubleInc = F::compose(F::addBy(1), F::multiplyBy(2));
+ * $doubleInc(50);
+ * // => 101
+ * $doubleInc(10);
+ * // => 21`
+ */
 $addBy      = F::curry(function ($n, $x) { return $x + $n; }, 2);
 $subtractBy = F::curry(function ($n, $x) { return $x - $n; }, 2);
 $multiplyBy = F::curry(function ($n, $x) { return $x * $n; }, 2);
 $divideBy   = F::curry(function ($n, $x) { return $x / $n; }, 2);
+
+$square = function ($x) { return $x * $x; };
 
 $sum = function () {
 	$args = func_get_args();
@@ -249,9 +267,9 @@ $opOr = function () {
 };
 
 $count = function ($xs) {
-	if (is_string($xs)) return strlen($xs);
 	if (is_array($xs))  return count($xs);
 	if (is_object($xs)) return count(get_object_vars($xs));
+	if (is_string($xs)) return strlen($xs);
 };
 $countBy = F::curry(function ($f, $xs) {
 	if (is_string($xs)) return str_split($xs);
@@ -262,14 +280,14 @@ $countBy = F::curry(function ($f, $xs) {
 	return $cnt;
 }, 2);
 $values = function ($xs) {
-	if (is_string($xs)) return str_split($xs);
 	if (is_array($xs))  return array_values($xs);
 	if (is_object($xs)) return array_values(get_object_vars($xs));
+	if (is_string($xs)) return str_split($xs);
 };
 $keys = function ($xs) {
-	if (is_string($xs)) return range(0, strlen($xs));
 	if (is_array($xs))  return array_keys($xs);
 	if (is_object($xs)) return array_keys(get_object_vars($xs));
+	if (is_string($xs)) return range(0, strlen($xs));
 };
 
 $toPairs = function ($xs) {
@@ -291,9 +309,9 @@ $fromPairs = function ($xs) {
 	return $out;
 };
 
-$sort    = function ($in) { sort($in);  return $in; };
-$ksort   = function ($in) { ksort($in); return $in; };
-$asort   = function ($in) { asort($in); return $in; };
+$sort    = 'sort';
+$ksort   = 'ksort';
+$asort   = 'asort';
 $sortBy  = F::curry(function ($cmp, $in) { usort($in, $cmp);  return $in; }, 2);
 $ksortBy = F::curry(function ($cmp, $in) { uksort($in, $cmp); return $in; }, 2);
 $asortBy = F::curry(function ($cmp, $in) { uasort($in, $cmp); return $in; }, 2);
@@ -339,9 +357,8 @@ $juxt = function () {
 	};
 };
 
-$apply = function ($f, $args) {
-	return call_user_func_array($f, $args);
-};
+$call  = 'call_user_func';
+$apply = 'call_user_func_array';
 
 $compose = function () {
 	$fns = func_get_args();
@@ -378,7 +395,7 @@ $compose = function () {
 $pipe = function () {
 	$fns = func_get_args();
 	$fns = array_reverse($fns);
-	return F::apply(F::compose(), $fns);
+	return call_user_func_array(F::compose(), $fns);
 };
 
 $useOver = function ($used, $over) {
@@ -601,12 +618,13 @@ $skipUntil = F::curry(function ($f, $xs) {
 }, 2);
 
 $repeat = F::curry(function ($el, $times) {
+	if ($times === 0) {
+		return array();
+	}
 	return array_fill(0, $times, $el);
 }, 2);
 
-$zipkv = F::curry(function ($keys, $vals) {
-	return array_combine($keys, $vals);
-}, 2);
+$zipmap = F::curry('array_combine', 2);
 
 $concat = function () {
 	$args = func_get_args();
@@ -876,7 +894,7 @@ $partitionBy = F::curry(function ($f, $xs) {
  *
  * @return array
  *
- * @examples
+ * @example 1
  *
  * $in = [['id' => 3, 'name' => 'alex'],
  *        ['id' => 5, 'name' => 'john']];
@@ -1017,7 +1035,7 @@ $indexBy = F::curry(function ($mixedKeys, $mixedVals, $in) {
  *
  * @return array
  *
- * @examples
+ * @example 1
  *
  * $in = [['id' => 3, 'name' => 'alex'],
  *        ['id' => 5, 'name' => 'john']];
