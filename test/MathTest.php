@@ -21,6 +21,19 @@ class MathTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(2, F::max($xs));
 	}
 
+	public function testSum() {
+		$nums = range(-100, 100);
+		$this->assertEquals(array_sum($nums), F::sum($nums));
+		$this->assertEquals(array_sum($nums), F::apply(F::sum(), $nums));
+	}
+	public function testProduct() {
+		$nums = range(-100, 100);
+		unset($nums[100]); // remove the val 0, so it doesn't ruin the product
+
+		$this->assertEquals(array_product($nums), F::product($nums));
+		$this->assertEquals(array_product($nums), F::apply(F::product(), $nums));
+	}
+
 	public function testAddBy() {
 		$x_range = range(-100, 100);
 		foreach (range(-10, 10) as $n) {

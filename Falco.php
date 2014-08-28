@@ -2,12 +2,13 @@
 namespace Falco;
 
 /**
- * Falco\F is a facade to allow short syntax when calling Falco functions.
+ * ### Falco\F
+ * a facade to allow short syntax when calling Falco functions.
  */
 final class F {
 
 	/**
-	 * F::_ is a placeholder constant that can be used with partial() and thread() to
+	 * **F::_** is a placeholder constant that can be used with partial() and thread() to
 	 * control the placement of arguments.  Useful for when you want
 	 * to use a 3rd party fn within a functional composition.
 	 */
@@ -42,6 +43,7 @@ final class F {
 }
 
 /**
+ * ### curry
  * A majority of core fns are curried and so they depend on this function being
  * available.
  */
@@ -90,7 +92,7 @@ F::set_fn('curry', function ($f, $numArgs = null) {
 		return function () use (& $currier, $f, $numArgs, $partialArgs) {
 			$args = array_merge($partialArgs, func_get_args());
 			if (count($args) >= $numArgs) {
-				return call_user_func_array($f, array_slice($args, 0, $numArgs));
+				return call_user_func_array($f, $args);
 			}
 			return $currier($args);
 		};
@@ -98,5 +100,6 @@ F::set_fn('curry', function ($f, $numArgs = null) {
 	return $currier(array());
 });
 
+// ### load
 // Inject the core functions by default when this file is loaded.
 F::load('core');
