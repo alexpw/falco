@@ -21,7 +21,10 @@ final class F {
 	 * you and your application for what else is loaded.
 	 */
 	public static function load($module) {
-		if ((require_once "module/{$module}.php") === 1) {
+		if (strpos($module, '/') === false) {
+			$module = "module/{$module}.php";
+		}
+		if ((require_once $module) === 1) {
 			unset($module);
 			self::$fns = array_merge(self::$fns, get_defined_vars());
 		}
@@ -41,6 +44,20 @@ final class F {
 		return call_user_func_array(self::$fns[$method], $args);
 	}
 }
+
+F::set_fn('lazy', function ($xs) {
+	if (is_string($xs)) $xs = str_split($xs);
+	if (($xs instanceof \Iterator) === false) {
+		return new \ArrayIterator($xs);
+	}
+	return $xs;
+});
+F::set_fn('value', function ($xs) {
+	if ($xs instanceof \Iterator) {
+		return iterator_to_array($xs);
+	}
+	return $xs;
+});
 
 /**
  * ### curry
@@ -99,6 +116,7 @@ F::set_fn('curry', function ($f, $numArgs = null) {
 	};
 	return $currier(array());
 });
+
 
 // ### load
 // Inject the core functions by default when this file is loaded.

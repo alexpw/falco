@@ -3,6 +3,14 @@ namespace Falco\module\core;
 
 use Falco\F as F;
 
+require_once 'iterators/core.php';
+use Falco\iterators\core\Filter;
+use Falco\iterators\core\TakeWhile;
+use Falco\iterators\core\TakeUntil;
+use Falco\iterators\core\SkipWhile;
+use Falco\iterators\core\SkipUntil;
+use Falco\iterators\core\Range;
+
 /**
  * An internal implementation detail, not to be used directly.
  *
@@ -16,7 +24,7 @@ final class FThread {
 	public function __call($method, $args) {
 		// A pseudo-method that returns the transformed needle and ends the thread.
 		if ($method === 'value') {
-			return $this->needle;
+			return F::value($this->needle);
 		} else {
 			// The needle can be positioned anywhere in the arg list by injecting
 			// it with the placeholder constant.
@@ -127,6 +135,8 @@ $sum = function () {
 	$args = func_get_args();
 	if (is_array($args[0])) {
 		return array_sum($args[0]);
+	} else if (is_object($args[0])) {
+		return array_sum(iterator_to_array($args[0]));
 	}
 	return array_sum($args);
 };
@@ -141,6 +151,8 @@ $product = function () {
 	$args = func_get_args();
 	if (is_array($args[0])) {
 		return array_product($args[0]);
+	} else if (is_object($args[0])) {
+		return array_product(iterator_to_array($args[0]));
 	}
 	return array_product($args);
 };
@@ -342,14 +354,15 @@ $opOr = function () {
 
 // ### count
 $count = function ($xs) {
-	if (is_array($xs))  return count($xs);
 	if (is_string($xs)) return strlen($xs);
+	if (is_array($xs)) return count($xs);
 	if (is_object($xs)) {
 		if ($xs instanceof Countable) {
 			return count($xs);
 		}
-		return count(get_object_vars($xs));
+		return iterator_count($xs);
 	}
+	return 0;
 };
 // ### countBy
 $countBy = F::curry(function ($f, $xs) {
@@ -361,16 +374,16 @@ $countBy = F::curry(function ($f, $xs) {
 	return $cnt;
 }, 2);
 // ### values
-$values = function ($xs) {
-	if (is_array($xs))  return array_values($xs);
-	if (is_object($xs)) return array_values(get_object_vars($xs));
-	if (is_string($xs)) return str_split($xs);
+$values = function ($x) {
+	if (is_array($x))  return array_values($x);
+	if (is_object($x)) return array_values(get_object_vars($x));
+	if (is_string($x)) return str_split($x);
 };
 // ### keys
-$keys = function ($xs) {
-	if (is_array($xs))  return array_keys($xs);
-	if (is_object($xs)) return array_keys(get_object_vars($xs));
-	if (is_string($xs)) return range(0, strlen($xs));
+$keys = function ($x) {
+	if (is_array($x))  return array_keys($x);
+	if (is_object($x)) return array_keys(get_object_vars($x));
+	if (is_string($x)) return range(0, strlen($x));
 };
 
 // ### toPairs
@@ -563,8 +576,10 @@ $project = F::curry(function ($names, $data) {
 }, 2);
 
 // ### range
-$range = function ($from, $to, $step = 1) {
-	return range($from, $to, $step);
+$range = 'range';
+// ### lazyrange
+$lazyrange = function ($from, $to, $step = 1) {
+	return new Range($from, $to, $step);
 };
 
 // ### where
@@ -628,20 +643,20 @@ $where = function ($kvs, $strict = true) {
 
 // ### take
 $take = F::curry(function ($n, $xs) {
-	switch (gettype($xs)) {
-		case 'array':  return array_slice($xs, 0, $n);
-		case 'string': return substr($xs, 0, $n);
-		case 'object':
-			if ($xs instanceof \Traversable) {
-				reset($xs);
-				$cnt = 0;
-				$out = array();
-				while ($cnt < $n && list($key, $val) = each($xs)) {
-					$cnt++;
-					$out[$key] = $val;
-				}
-				return $out;
+	if (is_string($xs)) $xs = str_split($xs);
+	if (is_array($xs)) {
+		$cnt = 0;
+		$out = array();
+		foreach ($xs as $k => $x) {
+			$out[$k] = $x;
+			$cnt++;
+			if ($cnt >= $n) {
+				break;
 			}
+		}
+		return $out;
+	} else if (is_object($xs)) {
+		return new \LimitIterator($xs, 0, $n);
 	}
 }, 2);
 
@@ -652,10 +667,12 @@ $ffirst = $compose($first, $first);
 
 // ### last
 $last = function ($xs) {
-	if (is_string($xs)) {
-		return $xs[strlen($xs) - 1];
+	if (is_string($xs)) return $xs[strlen($xs) - 1];
+	if (is_array($xs))  return $xs[count($xs) - 1];
+	if (is_object($xs)) {
+		$arr = iterator_to_array($xs);
+		return $arra[count($arr) - 1];
 	}
-	return $xs[count($xs) - 1];
 };
 
 // ### skip
@@ -686,52 +703,72 @@ $frest = $compose($first, $rest);
 // ### takeWhile
 $takeWhile = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
-	$out = array();
-	foreach ($xs as $x) {
-		if (! call_user_func($f, $x)) {
-			break;
+	if (is_array($xs)) {
+		$out = array();
+		foreach ($xs as $k => $x) {
+			if (! call_user_func($f, $x)) {
+				break;
+			}
+			$out[$k] = $x;
 		}
-		$out[] = $x;
+		return $out;
+	} else if (is_object($xs)) {
+		return new TakeWhile($xs, $f);
 	}
-	return $out;
 }, 2);
 
 // ### takeUntil
 $takeUntil = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
-	$out = array();
-	foreach ($xs as $x) {
-		if (call_user_func($f, $x)) {
-			$out[] = $x;
-			break;
+	if (is_array($xs)) {
+		$out = array();
+		foreach ($xs as $k => $x) {
+			if (call_user_func($f, $x)) {
+				$out[$k] = $x;
+				return;
+			}
+			$out[$k] = $x;
 		}
-		$out[] = $x;
+		return $out;
+	} else if (is_object($xs)) {
+		return new TakeUntil($xs->getArrayCopy(), $f);
 	}
-	return $out;
 }, 2);
 
 // ### skipWhile
 $skipWhile = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
-	$i = 0;
-	foreach ($xs as $x) {
-		if (call_user_func($f, $x)) {
-			$i++;
+	if (is_array($xs)) {
+		$i = 0;
+		foreach ($xs as $k => $x) {
+			if (call_user_func($f, $x)) {
+				$i++;
+			} else {
+				break;
+			}
 		}
+		return array_slice($xs, 0, $i);
+	} else if (is_object($xs)) {
+		return new SkipWhile($xs, $f);
 	}
-	return array_slice($xs, $i);
 }, 2);
 
 // ### skipUntil
 $skipUntil = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
-	$i = 0;
-	foreach ($xs as $x) {
-		if (! call_user_func($f, $x)) {
-			$i++;
+	if (is_array($xs)) {
+		$i = 0;
+		foreach ($xs as $k => $x) {
+			if (! call_user_func($f, $x)) {
+				$i++;
+			} else {
+				$i++; break;
+			}
 		}
+		return array_slice($out, 0, $i);
+	} else if (is_object($xs)) {
+		return new SkipUntil($xs, $f);
 	}
-	return array_slice($xs, $i);
 }, 2);
 
 // ### repeat
@@ -912,22 +949,24 @@ $mapcatkv = F::curry(function () {
 
 // ### filter
 $filter = F::curry(function ($f, $xs) {
-	$out = array();
 	if (is_string($xs)) $xs = str_split($xs);
-	if (is_array($xs) || $xs instanceOf Traversable) {
-		foreach ($xs as $x) {
+	if (is_array($xs)) {
+		$out = array();
+		foreach ($xs as $k => $x) {
 			if (call_user_func($f, $x)) {
-				$out[] = $x;
+				$out[$k] = $x;
 			}
 		}
+		return $out;
+	} else if (is_object($xs)) {
+		return new Filter($xs, $f);
 	}
-	return $out;
 }, 2);
 // ### filterkv
 $filterkv = F::curry(function ($f, $xs) {
 	$out = array();
 	if (is_string($xs)) $xs = str_split($xs);
-	if (is_array($xs) || $xs instanceOf Traversable) {
+	if (is_array($xs) || $xs instanceof Traversable) {
 		while ($x = each($xs)) {
 			if (call_user_func($f, $x)) {
 				$out[$x[0]] = $x[1];
@@ -945,13 +984,17 @@ $ffilterkv = $compose($first, $filterkv);
 // ### remove
 $remove = F::curry(function ($f, $xs) {
 	if (is_string($xs)) $xs = str_split($xs);
-	$out = array();
-	foreach ($xs as $x) {
-		if (! call_user_func($f, $x)) {
-			$out[] = $x;
+	if (is_array($xs)) {
+		$out = array();
+		foreach ($xs as $k => $x) {
+			if (! call_user_func($f, $x)) {
+				$out[$k] = $x;
+			}
 		}
+		return $out;
+	} else if (is_object($xs)) {
+		return new Filter($xs, $f, $ok = false);
 	}
-	return $out;
 }, 2);
 // ### removekv
 $removekv = F::curry(function ($f, $xs) {
