@@ -1,15 +1,8 @@
 <?php
 namespace Falco\module\core;
 
-use Falco\F as F;
-
-require_once 'iterators/core.php';
-use Falco\iterators\core\Filter;
-use Falco\iterators\core\TakeWhile;
-use Falco\iterators\core\TakeUntil;
-use Falco\iterators\core\SkipWhile;
-use Falco\iterators\core\SkipUntil;
-use Falco\iterators\core\Range;
+use Falco\Falco as F;
+use Falco\iterators\core as iter;
 
 /**
  * An internal implementation detail, not to be used directly.
@@ -40,7 +33,7 @@ final class FThread {
 			if (! $injected) {
 				$args[] = $this->needle;
 			}
-			$this->needle = call_user_func_array("Falco\F::$method", $args);
+			$this->needle = call_user_func_array("Falco\Falco::$method", $args);
 			return $this;
 		}
 	}
@@ -579,7 +572,7 @@ $project = F::curry(function ($names, $data) {
 $range = 'range';
 // ### lazyrange
 $lazyrange = function ($from, $to, $step = 1) {
-	return new Range($from, $to, $step);
+	return new iter\Range($from, $to, $step);
 };
 
 // ### where
@@ -713,7 +706,7 @@ $takeWhile = F::curry(function ($f, $xs) {
 		}
 		return $out;
 	} else if (is_object($xs)) {
-		return new TakeWhile($xs, $f);
+		return new iter\TakeWhile($xs, $f);
 	}
 }, 2);
 
@@ -731,7 +724,7 @@ $takeUntil = F::curry(function ($f, $xs) {
 		}
 		return $out;
 	} else if (is_object($xs)) {
-		return new TakeUntil($xs->getArrayCopy(), $f);
+		return new iter\TakeUntil($xs, $f);
 	}
 }, 2);
 
@@ -749,7 +742,7 @@ $skipWhile = F::curry(function ($f, $xs) {
 		}
 		return array_slice($xs, 0, $i);
 	} else if (is_object($xs)) {
-		return new SkipWhile($xs, $f);
+		return new iter\SkipWhile($xs, $f);
 	}
 }, 2);
 
@@ -767,7 +760,7 @@ $skipUntil = F::curry(function ($f, $xs) {
 		}
 		return array_slice($out, 0, $i);
 	} else if (is_object($xs)) {
-		return new SkipUntil($xs, $f);
+		return new iter\SkipUntil($xs, $f);
 	}
 }, 2);
 
@@ -781,6 +774,15 @@ $repeat = F::curry(function ($el, $times) {
 
 // ### zipmap
 $zipmap = F::curry('array_combine', 2);
+
+// ### iterate
+$iterate = F::curry(function ($f, $x) {
+	return new iter\Iterate($f, $x);
+}, 2);
+
+$cycle = function ($xs) {
+	return new \InfiniteIterator(F::lazy($xs));
+};
 
 // ### concat
 $concat = function () {
@@ -959,7 +961,7 @@ $filter = F::curry(function ($f, $xs) {
 		}
 		return $out;
 	} else if (is_object($xs)) {
-		return new Filter($xs, $f);
+		return new iter\Filter($xs, $f);
 	}
 }, 2);
 // ### filterkv
@@ -993,7 +995,7 @@ $remove = F::curry(function ($f, $xs) {
 		}
 		return $out;
 	} else if (is_object($xs)) {
-		return new Filter($xs, $f, $ok = false);
+		return new iter\Filter($xs, $f, $ok = false);
 	}
 }, 2);
 // ### removekv

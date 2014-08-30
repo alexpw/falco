@@ -1,6 +1,6 @@
 <?php
 
-use Falco\F as F;
+use Falco\Falco as F;
 
 class IndexByTest extends PHPUnit_Framework_TestCase {
 

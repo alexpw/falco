@@ -2,17 +2,17 @@
 namespace Falco;
 
 /**
- * ### Falco\F
- * a facade to allow short syntax when calling Falco functions.
+ * ### Falco\Falco
+ * a facade for calling Falco functions.
  */
-final class F {
+final class Falco {
 
 	/**
-	 * **F::_** is a placeholder constant that can be used with partial() and thread() to
+	 * **Falco::_** is a placeholder constant that can be used with partial() and thread() to
 	 * control the placement of arguments.  Useful for when you want
 	 * to use a 3rd party fn within a functional composition.
 	 */
-	const _ = '\F::_';
+	const _ = '\Falco::_';
 
 	private static $fns = array();
 
@@ -45,14 +45,14 @@ final class F {
 	}
 }
 
-F::set_fn('lazy', function ($xs) {
+Falco::set_fn('lazy', function ($xs) {
 	if (is_string($xs)) $xs = str_split($xs);
 	if (($xs instanceof \Iterator) === false) {
 		return new \ArrayIterator($xs);
 	}
 	return $xs;
 });
-F::set_fn('value', function ($xs) {
+Falco::set_fn('value', function ($xs) {
 	if ($xs instanceof \Iterator) {
 		return iterator_to_array($xs);
 	}
@@ -64,7 +64,7 @@ F::set_fn('value', function ($xs) {
  * A majority of core fns are curried and so they depend on this function being
  * available.
  */
-F::set_fn('curry', function ($f, $numArgs = null) {
+Falco::set_fn('curry', function ($f, $numArgs = null) {
 	if ($numArgs === null) {
 		$r = new \ReflectionFunction($f);
 		$numArgs = $r->getNumberOfParameters();
@@ -120,4 +120,5 @@ F::set_fn('curry', function ($f, $numArgs = null) {
 
 // ### load
 // Inject the core functions by default when this file is loaded.
-F::load('core');
+require_once 'iterators/core.php';
+Falco::load('core');

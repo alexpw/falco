@@ -16,6 +16,25 @@ class Filter extends \FilterIterator {
 	}
 }
 
+class Iterate implements \Iterator {
+	private $f;
+	private $x;
+	private $original;
+	private $k;
+	public function __construct($f, $x) {
+		$this->f        = $f;
+		$this->original = $x;
+	}
+	public function rewind()  { $this->k = 0; $this->x = $this->original; }
+	public function valid()   { return true; }
+	public function current() { return $this->x; }
+	public function key()     { return $this->k; }
+	public function next()    {
+		$this->k++;
+		$this->x = call_user_func($this->f, $this->x);
+	}
+}
+
 class SkipWhile extends \FilterIterator {
 	private $iter;
 	private $fn;

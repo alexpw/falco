@@ -2,7 +2,7 @@
 
 require '../Falco.php';
 
-use Falco\F as F;
+use Falco\Falco as F;
 
 $tasks = [
     ['username' => 'Michael', 'title' => 'Curry stray functions', 'dueDate' => '2014-05-06', 'complete' => true, 'effort' => 'low', 'priority' => 'low'],    

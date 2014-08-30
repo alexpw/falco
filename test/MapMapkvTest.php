@@ -1,6 +1,5 @@
 <?php
-
-use Falco\F as F;
+use Falco\Falco as F;
 
 class MapTest extends PHPUnit_Framework_TestCase {
 
