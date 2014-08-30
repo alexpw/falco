@@ -150,24 +150,24 @@ $product = function () {
 	return array_product($args);
 };
 /**
- * ### all
+ * ### all, every
  * `F::all(F::isOdd(), [1,2,3,4]);
  * => false
  * F::all(F::isOdd(), [1,3,5]);
  * => true`
  */
-$all = F::curry(function ($f, $xs) {
+$all = $every = F::curry(function ($f, $xs) {
 	foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
 	return true;
 }, 2);
 /**
- * ### any
+ * ### any, some
  * `F::any(F::isOdd(), [1,2,3,4]);
  * => true
  * F::any(F::isOdd(), [2,4,6]);
  * => false`
  */
-$any = F::curry(function ($f, $xs) {
+$any = $some = F::curry(function ($f, $xs) {
 	foreach ($xs as $x) if (call_user_func($f, $x)) return true;
 	return false;
 }, 2);
@@ -430,16 +430,6 @@ $contains = F::curry(function ($needle, $haystack) {
 	}
 	return false;
 }, 2);
-// ### containsBy
-$containsBy = F::curry(function ($f, $xs) {
-	if (is_string($xs)) return str_split($xs);
-	foreach ($xs as $x) {
-		if (call_user_func($f, $x)) {
-			return true;
-		}
-	}
-	return false;
-}, 2);
 
 // ### juxt
 $juxt = function () {
@@ -576,6 +566,9 @@ $lazyrange = function ($from, $to, $step = 1) {
 };
 
 // ### where
+// `$age21 = F::where(['age' => 21]);
+// F::map($age21, [['age' => 30, 'id' => 1]['age' => 21, 'id' => 2]});
+// => [['age' => 21, 'id' => 2]]`
 $where = function ($kvs, $strict = true) {
 	if ($strict) {
 		return function ($el) use ($kvs) {
@@ -664,7 +657,7 @@ $last = function ($xs) {
 	if (is_array($xs))  return $xs[count($xs) - 1];
 	if (is_object($xs)) {
 		$arr = iterator_to_array($xs);
-		return $arra[count($arr) - 1];
+		return $arr[count($arr) - 1];
 	}
 };
 
@@ -674,16 +667,15 @@ $skip = F::curry(function ($n, $xs) {
 		case 'array':  return array_slice($xs, $n);
 		case 'string': return substr($xs, $n);
 		case 'object':
-			if ($xs instanceof \Traversable) {
-				reset($xs);
-				for ($i = 0; $i < $n; $i++) {
+			if ($xs instanceof \Iterator) {
+				foreach ($xs as $x) {
 					next($xs);
+					$n--;
+					if ($n <= 0) {
+						break;
+					}
 				}
-				$out = array();
-				while (list($key, $val) = each($xs)) {
-					$out[$key] = $val;
-				}
-				return $out;
+				return $xs;
 			}
 	}
 }, 2);

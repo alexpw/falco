@@ -69,6 +69,7 @@ Falco::set_fn('curry', function ($f, $numArgs = null) {
 		$r = new \ReflectionFunction($f);
 		$numArgs = $r->getNumberOfParameters();
 	}
+	// Optimize for small arity, minimizes fn wrapping.
 	switch ($numArgs) {
 		case 1: return function () use ($f) {
 			return call_user_func_array($f, func_get_args());
