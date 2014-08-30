@@ -271,8 +271,8 @@ $gte = F::curry(function () {
 	return true;
 }, 2);
 
-// ### opNot, not
-$opNot = $not = function ($f) {
+// ### not
+$not = function ($f) {
 	if (is_callable($f)) {
 		return function ($x) use ($f) {
 			return ! call_user_func($f, $x);
@@ -284,8 +284,8 @@ $opNot = $not = function ($f) {
 	}
 };
 
-// ### opAnd
-$opAnd = function () {
+// ### andBy
+$andBy = function () {
 	$fns = func_get_args();
 	switch (count($fns)) {
 		case 1: list($f) = $fns;
@@ -314,8 +314,8 @@ $opAnd = function () {
 		}, $fns);
 	};
 };
-// ### opOr
-$opOr = function () {
+// ### orBy
+$orBy = function () {
 	$fns = func_get_args();
 	switch (count($fns)) {
 		case 1: list($f) = $fns;
@@ -646,8 +646,10 @@ $take = F::curry(function ($n, $xs) {
 	}
 }, 2);
 
-// ### first
-$first  = $head = $take(1);
+// ### first, head
+$first = $head = function ($xs) {
+	return reset(F::value(F::take(1, $xs)));
+};
 // ### ffirst
 $ffirst = $compose($first, $first);
 
@@ -1002,33 +1004,65 @@ $removekv = F::curry(function ($f, $xs) {
 	return $out;
 }, 2);
 
-// ### reduce, foldl
-$reduce = $foldl = F::curry(function ($f, $initialValue, $xs) {
+// ### reduce, $fold, foldl
+$reduce = $fold = $foldl = F::curry(function () {
+	$args = func_get_args();
+	$f    = array_shift($args);
+	if (count($args) === 1) {
+		$xs           = $args[0];
+		$initialValue = array_shift($xs);
+	} else {
+		list($initialValue, $xs) = $args;
+	}
 	if (is_string($xs)) $xs = str_split($xs);
 	return array_reduce($xs, $f, $initialValue);
 }, 2);
 // ### reducekv, foldkv
-$reducekv = $foldlkv = F::curry(function ($f, $initialValue, $xs) {
+$reducekv = $foldkv = F::curry(function () {
+	$args = func_get_args();
+	$f    = array_shift($args);
+	if (count($args) === 1) {
+		$xs           = $args[0];
+		$initialValue = array_shift($xs);
+	} else {
+		list($initialValue, $xs) = $args;
+	}
 	if (is_string($xs)) $xs = str_split($xs);
 	$accumulator = $initialValue;
-	while ($x = each($xs)) {
-		$accumulator = call_user_func($f, $accumulator, $x);
+	foreach ($xs as $k => $v) {
+		$accumulator = call_user_func($f, $accumulator, $k, $v);
 	}
 	return $accumulator;
 }, 2);
 // ### reduceRight, foldr
-$reduceRight = $foldr = F::curry(function ($f, $initialValue, $xs) {
+$reduceRight = $foldr = F::curry(function () {
+	$args = func_get_args();
+	$f    = array_shift($args);
+	if (count($args) === 1) {
+		$xs           = $args[0];
+		$initialValue = array_shift($xs);
+	} else {
+		list($initialValue, $xs) = $args;
+	}
 	if (is_string($xs)) $xs = str_split($xs);
 	$xs = array_reverse($xs);
 	return array_reduce($xs, $f, $initialValue);
 }, 2);
 // ### foldrkv
-$foldrkv = F::curry(function ($f, $initialValue, $xs) {
+$foldrkv = F::curry(function () {
+	$args = func_get_args();
+	$f    = array_shift($args);
+	if (count($args) === 1) {
+		$xs           = $args[0];
+		$initialValue = array_shift($xs);
+	} else {
+		list($initialValue, $xs) = $args;
+	}
 	if (is_string($xs)) $xs = str_split($xs);
 	$accumulator = $initialValue;
 	$xs = array_reverse($xs);
-	while ($x = each($xs)) {
-		$accumulator = call_user_func($f, $accumulator, $x);
+	foreach ($xs as $k => $v) {
+		$accumulator = call_user_func($f, $accumulator, $k, $v);
 	}
 	return $accumulator;
 }, 2);
