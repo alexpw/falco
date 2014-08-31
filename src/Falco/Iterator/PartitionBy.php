@@ -1,5 +1,5 @@
 <?php
-#namespace Falco\Iterator;
+namespace Falco\Iterator;
 
 class PartitionBy extends \IteratorIterator
 {

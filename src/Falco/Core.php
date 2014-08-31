@@ -18,6 +18,7 @@ final class Core
 
     public static function __callStatic($method, $args)
     {
+        $method = strtolower($method);
         if (empty($args)) {
             return self::$fns[$method];
         }

@@ -9,4 +9,8 @@ require "{$dir}{$ds}Module{$ds}Core.php";
 
 unset($file, $dir, $ds);
 
-Core::$fns = get_defined_vars();
+$fns = get_defined_vars();
+foreach ($fns as $name => $f) {
+    $fns[strtolower($name)] = $f;
+}
+Core::$fns = $fns;

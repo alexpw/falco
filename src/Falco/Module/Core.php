@@ -26,7 +26,11 @@ $value = function ($xs) {
  */
 $curry = function ($f, $numArgs = null) {
     if ($numArgs === null) {
-        $r = new \ReflectionFunction($f);
+        if (is_array($f)) {
+            $r = new \ReflectionMethod($f);
+        } else {
+            $r = new \ReflectionFunction($f);
+        }
         $numArgs = $r->getNumberOfParameters();
     }
     // Optimize for small arity, minimizes fn wrapping.
@@ -598,7 +602,7 @@ $project = $curry(function ($names, $data) {
 $range = 'range';
 
 // ### lazyrange
-$lazyrange = function ($from = 0, $to = PHP_INT_MAX, $step = 1) {
+$lazyrange = function ($from, $to = PHP_INT_MAX, $step = 1) {
     return new Iter\Range($from, $to, $step);
 };
 
@@ -833,21 +837,33 @@ $concat = function () {
         return call_user_func_array('array_merge', $args);
     } else if (is_string($first)) {
         return implode('', $args);
+    } else {
+        $concatter = new \AppendIterator();
+        foreach ($args as $arg) {
+            $concatter->append($arg);
+        }
+        return $concatter;
     }
-    return $args;
 };
 
 // ### map
 $map = $curry(function () {
     $args = func_get_args();
     $f    = array_shift($args);
+
+    if (is_object($args[0])) {
+        return new Iter\Map($f, $args);
+    }
+
     $out  = array();
     switch (count($args)) {
         case 1:
             list($xs) = $args;
             if (is_string($xs)) $xs = str_split($xs);
-            foreach ($xs as $k => $x) {
-                $out[$k] = call_user_func($f, $x);
+            if (is_array($xs)) {
+                foreach ($xs as $k => $x) {
+                    $out[$k] = call_user_func($f, $x);
+                }
             }
             break;
         case 2:
@@ -906,85 +922,10 @@ $map = $curry(function () {
     return $out;
 }, 2);
 
-// ### mapkv
-$mapkv = $curry(function () {
-    $args = func_get_args();
-    $f    = array_shift($args);
-    $out  = array();
-    switch (count($args)) {
-        case 1:
-            list($xs) = $args;
-            if (is_string($xs)) $xs = str_split($xs);
-            while ($x = each($xs)) {
-                $out[$x['key']] = call_user_func($f, $x);
-            }
-            break;
-        case 2:
-            list($xs, $ys) = $args;
-            if (is_string($xs)) $xs = str_split($xs);
-            if (is_string($ys)) $ys = str_split($ys);
-            reset($ys);
-            while ($x = each($xs)) {
-                if ($y = each($ys)) {
-                    $out[] = call_user_func($f, $x, $y);
-                } else {
-                    break;
-                }
-            }
-            break;
-        case 3:
-            list($xs, $ys, $zs) = $args;
-            if (is_string($xs)) $xs = str_split($xs);
-            if (is_string($ys)) $ys = str_split($ys);
-            if (is_string($zs)) $zs = str_split($zs);
-            reset($ys); reset($zs);
-            while ($x = each($xs)) {
-                if ($y = each($ys)) {
-                    if ($z = each($zs)) {
-                        $out[] = call_user_func($f, $x, $y, $z);
-                    } else {
-                        break;
-                    }
-                } else {
-                    break;
-                }
-            }
-            break;
-        default:
-            $numArgs = count($args);
-            $xs = array_shift($args);
-            if (is_string($xs)) $xs = str_split($xs);
-            foreach ($args as $i => $arg) {
-                if (is_string($arg)) $args[$i] = str_split($arg);
-                reset($args[$i]);
-            }
-            reset($xs);
-            while ($x = each($xs)) {
-                $kvals = array($x);
-                for ($i = 0; $i < $numArgs - 1; $i++) {
-                    if ($kv = each($args[$i])) {
-                        $kvals[] = $kv;
-                    }
-                }
-                if (count($kvals) !== $numArgs) {
-                    break;
-                }
-                $out[] = call_user_func_array($f, $kvals);
-            }
-            break;
-    }
-    return $out;
-}, 2);
-
-// ### mapcat
-$mapcat = $curry(function () {
+// ### mapcat, flatMap
+$mapcat = $flatMap = $curry(function () {
     $fn_with_args = func_get_args();
     return call_user_func(Core::concat(), call_user_func_array(Core::map(), $fn_with_args));
-}, 2);
-// ### mapcatkv
-$mapcatkv = $curry(function () {
-    $fn_with_args = func_get_args();
-    return call_user_func(Core::concat(), call_user_func_array(Core::mapkv(), $fn_with_args));
 }, 2);
 
 // ### filter
@@ -1004,16 +945,16 @@ $filter = $curry(function ($f, $xs) {
 }, 2);
 // ### filterkv
 $filterkv = $curry(function ($f, $xs) {
-    $out = array();
     if (is_string($xs)) $xs = str_split($xs);
-    if (is_array($xs) || $xs instanceof Traversable) {
+    if (is_array($xs)) {
+        $out = array();
         while ($x = each($xs)) {
             if (call_user_func($f, $x)) {
                 $out[$x[0]] = $x[1];
             }
         }
+        return $out;
     }
-    return $out;
 }, 2);
 
 // ### ffilter

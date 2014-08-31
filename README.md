@@ -19,19 +19,20 @@ Unstable, alpha.
 
 Partly because I:
 
-* wanted to see what's possible when currying anonymous functions in PHP.
-* had a FP itch and I'm paid to write more PHP than Clojure.
+* wanted to see what the result would look like in PHP.
+* had a FP itch and I'm paid to write more PHP/JS than Clojure.
 * found no equivalent in PHP (non-exhaustive search).
 
-Oddly enough, when I encountered an obscure long-standing bug in xdebug, it served
-as strong evidence to suggest this is breaking new ground.
+Oddly enough, when I encountered an obscure bug in xdebug, it served as evidence
+to suggest this is breaking new ground.  It turns out that the way I optimize for
+specific arities maybe the reason.
 
 This library not only delivers the power of PHP-flavored functional programming,
 but aims to do it through a consistent API, which PHP fails to do with
 (haystack, needle) and (needle, haystack).
 
-PHP's flexible definition of Callable surprisingly powerful, and everything I need
-is available in 5.3 to stay compatible for older setups.
+PHP's flexible definition of Callable is surprisingly powerful, and everything I
+need is available in 5.3 to stay compatible for older setups.
 
 ### A port of what?
 
