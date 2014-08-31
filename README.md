@@ -17,19 +17,15 @@ Unstable, alpha, everything is subject to change and is largely untested.
 
 ### PHP? yes
 
-Partly because I:
+Partly because:
 
-* wanted to see what the result would look like in PHP.
-* had a FP itch and I'm paid to write more PHP/JS than Clojure.
-* found no equivalent in PHP (non-exhaustive search).
+* I wanted to see what the result would look like in PHP.
+* I had a FP itch and I'm paid to write more PHP/JS than Clojure.
+* I found no equivalent in PHP (non-exhaustive search).
 
 Oddly enough, when I encountered an obscure bug in xdebug, it served as evidence
 to suggest this is breaking new ground.  It turns out that the way I optimize for
 specific arities maybe the reason.
-
-This library not only delivers the power of PHP-flavored functional programming,
-but aims to do it through a consistent API, which PHP fails to do with
-(haystack, needle) and (needle, haystack).
 
 PHP's flexible definition of Callable is surprisingly powerful, and everything I
 need is available in 5.3 to stay compatible for older setups.

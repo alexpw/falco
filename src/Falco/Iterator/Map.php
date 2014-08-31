@@ -6,12 +6,22 @@ class Map extends \MultipleIterator
     private $fn;
     private $curr;
     private $pos;
+    private $num_iters;
 
     public function __construct($fn, $args)
     {
-        parent::__construct();
 
-        $this->fn = $fn;
+        $this->fn        = $fn;
+        $this->num_iters = count($args);
+
+        $flags = \MultipleIterator::MIT_NEED_ALL;
+        if ($this->num_iters === 1) {
+            $flags |= \MultipleIterator::MIT_KEYS_NUMERIC;
+        } else {
+            $flags |= \MultipleIterator::MIT_KEYS_ASSOC;
+        }
+        parent::__construct($flags);
+
         foreach ($args as $arg) {
             if (is_object($arg)) {
                 $this->attachIterator($arg);
@@ -37,7 +47,12 @@ class Map extends \MultipleIterator
      */
     public function key()
     {
-        return $this->pos;
+        if ($this->num_iters === 1) {
+            $key = parent::key();
+            return $key[0];
+        } else {
+            return $this->pos;
+        }
     }
 
     public function current()
