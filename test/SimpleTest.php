@@ -1,5 +1,5 @@
 <?php
-use Falco\Falco as F;
+use Falco\Core as F;
 
 class SimpleTest extends PHPUnit_Framework_TestCase {
 

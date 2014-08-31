@@ -1,8 +1,8 @@
 <?php
 
-require '../Falco.php';
+require 'vendor/autoload.php';
 
-use Falco\Falco as F;
+use Falco\Core as F;
 
 $tasks = [
     ['username' => 'Michael', 'title' => 'Curry stray functions', 'dueDate' => '2014-05-06', 'complete' => true, 'effort' => 'low', 'priority' => 'low'],    

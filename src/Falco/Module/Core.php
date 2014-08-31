@@ -1,7 +1,7 @@
 <?php
 namespace Falco;
 
-use Falco\Core;
+use Falco\Core as F;
 use Falco\Support\Thread;
 use Falco\Iterator as Iter;
 
@@ -348,7 +348,7 @@ $andBy = function () {
 	}
 	return function () use ($fns) {
 		$args = func_get_args();
-		return F::all(function ($f) use ($args) {
+		return Core::all(function ($f) use ($args) {
 			return call_user_func_array($f, $args);
 		}, $fns);
 	};
@@ -378,7 +378,7 @@ $orBy = function () {
 	}
 	return function () use ($fns) {
 		$args = func_get_args();
-		return ! F::none(function ($f) use ($args) {
+		return ! Core::none(function ($f) use ($args) {
 			return call_user_func_array($f, $args);
 		}, $fns);
 	};
@@ -524,19 +524,19 @@ $compose = function () {
 $pipe = function () {
 	$fns = func_get_args();
 	$fns = array_reverse($fns);
-	return call_user_func_array(F::compose(), $fns);
+	return call_user_func_array(Core::compose(), $fns);
 };
 
 // ### useOver
 $useOver = function ($used, $over) {
-	return $curry(function ($overArg, $usedArg) use ($used, $over) {
+	return Core::curry(function ($overArg, $usedArg) use ($used, $over) {
 		$overNow = call_user_func($over, $overArg);
 		return call_user_func($used, $overNow, $usedArg);
 	}, 2);
 };
 // ### useUnder
 $useUnder = function ($used, $under) {
-	return $curry(function ($usedArg, $underArg) use ($used, $under) {
+	return Core::curry(function ($usedArg, $underArg) use ($used, $under) {
 		$underNow = call_user_func($under, $underArg);
 		return call_user_func($used, $underNow, $usedArg);
 	}, 2);

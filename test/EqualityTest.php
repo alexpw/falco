@@ -1,6 +1,6 @@
 <?php
 
-use Falco\Falco as F;
+use Falco\Core as F;
 
 class EqualityTest extends PHPUnit_Framework_TestCase {
 
@@ -17,15 +17,27 @@ class EqualityTest extends PHPUnit_Framework_TestCase {
 		$this->assertTrue(F::none(F::isOdd(), [2,4,6]));
 	}
 	public function testAnd() {
-		$truthy = F::opAnd(F::isTruthy());
+		$truthy = F::andBy(F::isTruthy());
 		$this->assertTrue($truthy([1]));
 		$this->assertTrue($truthy(2));
 		$this->assertFalse($truthy(0));
 		$this->assertFalse($truthy(false));
 
-		$truthyOdd = F::opAnd(F::isTruthy(), F::isOdd());
+		$truthyOdd = F::andBy(F::isTruthy(), F::isOdd());
 		$this->assertTrue($truthyOdd(1));
 		$this->assertFalse($truthyOdd(2));
+	}
+    public function testOr() {
+		$truthy = F::orBy(F::isTruthy());
+		$this->assertTrue($truthy([1]));
+		$this->assertTrue($truthy(2));
+		$this->assertFalse($truthy(0));
+		$this->assertFalse($truthy(false));
+
+		$truthyOdd = F::orBy(F::isTruthy(), F::isOdd());
+		$this->assertTrue($truthyOdd(1));
+		$this->assertTrue($truthyOdd(2));
+		$this->assertFalse($truthyOdd(0));
 	}
 
 	public function testEq() {

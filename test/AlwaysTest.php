@@ -1,6 +1,6 @@
 <?php
 
-use Falco\Falco as F;
+use Falco\Core as F;
 
 class AlwaysTest extends PHPUnit_Framework_TestCase {
 
