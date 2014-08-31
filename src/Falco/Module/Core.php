@@ -696,7 +696,8 @@ $take = $curry(function ($n, $xs) {
 
 // ### first, head
 $first = $head = function ($xs) {
-    return reset(Core::value(Core::take(1, $xs)));
+    $rs = Core::value(Core::take(1, $xs));
+    return reset($rs);
 };
 // ### ffirst
 $ffirst = $compose($first, $first);
