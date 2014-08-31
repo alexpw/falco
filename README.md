@@ -1,11 +1,11 @@
 Falco
 =====
 
-Falco is a **f**unction**al** **co**mposition library for PHP 5.3+.
+Falco is a FunctionAL COmposition library for PHP 5.3+.
 
 ## Status
 
-Unstable, alpha.
+Unstable, alpha, everything is subject to change and is largely untested.
 
 ## TLDR;
 
@@ -88,6 +88,9 @@ To start being lazy, you simply wrap your input data in ```F::lazy()``` or use `
 Then, you either explicitly ask for:
 * ```F::value($result)``` and turn the lazy iterator into an array.
 * ```F::first($result)``` and return the first element.
+
+or you foreach over the result.
+* ```foreach (F::take(5, $result) as $val)```
 * ```foreach ($result as $val)``` and ```break;``` appropriately.
 
 See examples elsewhere.
