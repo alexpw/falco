@@ -3,7 +3,10 @@
 use Falco\Core;
 
 $dir = dirname($file);
-require "$dir/Module/Core.php";
-unset($file, $dir);
+$ds  = DIRECTORY_SEPARATOR;
+
+require "{$dir}{$ds}Module{$ds}Core.php";
+
+unset($file, $dir, $ds);
 
 Core::$fns = get_defined_vars();

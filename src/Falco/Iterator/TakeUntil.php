@@ -6,7 +6,7 @@ class TakeUntil extends \IteratorIterator
     private $fn;
     private $done;
 
-    public function __construct($iter, $fn)
+    public function __construct($fn, $iter)
     {
         parent::__construct($iter);
         $this->fn = $fn;
@@ -15,6 +15,7 @@ class TakeUntil extends \IteratorIterator
     public function rewind()
     {
         $this->done = false;
+        parent::rewind();
     }
 
     public function valid()

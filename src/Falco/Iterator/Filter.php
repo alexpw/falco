@@ -6,10 +6,10 @@ class Filter extends \FilterIterator
     private $fn;
     private $ok;
 
-    public function __construct(\Iterator $iterator, $fn, $ok = true)
+    public function __construct($fn, $iter, $ok = true)
 	{
-        parent::__construct($iterator);
-        $this->iter = $iterator;
+        parent::__construct($iter);
+        $this->iter = $iter;
         $this->fn = $fn;
         $this->ok = $ok;
     }

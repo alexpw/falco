@@ -7,10 +7,10 @@ class SkipUntil extends \FilterIterator
     private $fn;
     private $done;
 
-    public function __construct(\Iterator $iterator, $fn)
+    public function __construct($fn, $iter)
     {
-        parent::__construct($iterator);
-        $this->iter = $iterator;
+        parent::__construct($iter);
+        $this->iter = $iter;
         $this->fn   = $fn;
         $this->done = false;
     }

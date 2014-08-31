@@ -12,7 +12,7 @@ final class Core
      * control the placement of arguments.  Useful for when you want
      * to use a 3rd party fn within a functional composition.
      */
-    const _ = '\Falco::_';
+    const _ = 'Falco\Core::_';
 
     public static $fns = array();
 

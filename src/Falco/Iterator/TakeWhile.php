@@ -5,7 +5,7 @@ class TakeWhile extends \IteratorIterator
 {
     private $fn;
 
-    public function __construct($iter, $fn)
+    public function __construct($fn, $iter)
     {
         parent::__construct($iter);
         $this->fn = $fn;
