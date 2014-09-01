@@ -3,6 +3,34 @@ use Falco\Core as F;
 
 class MathTest extends PHPUnit_Framework_TestCase
 {
+    public function testCount()
+    {
+        $in = array();
+        foreach (range(1,1000) as $i) {
+            $in[] = $i;
+		    $this->assertEquals(count($in), F::count($in));
+		    $this->assertEquals(count($in), F::count(F::lazy($in)));
+        }
+
+        $actual = F::count(F::take(10, F::cycle([1,2,3])));
+        $this->assertEquals(10, $actual);
+	}
+
+    public function testCountBy()
+    {
+        $odd = F::isOdd();
+        $in = array();
+        foreach (range(1,1000) as $i) {
+            $in[] = $i;
+            $exp  = ceil($i / 2);
+		    $this->assertEquals($exp, F::countBy($odd, $in));
+		    $this->assertEquals($exp, F::countBy($odd, F::lazy($in)));
+        }
+
+        $actual = F::countBy($odd, F::take(10, F::cycle([1,2,3])));
+        $this->assertEquals(7, $actual);
+	}
+
 	public function testMin()
     {
 		$this->assertEquals(-2, F::min(-2, -1, 0, 1, 2));

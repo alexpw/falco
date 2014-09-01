@@ -185,7 +185,7 @@ $sum = function () {
     if (is_array($args[0])) {
         return array_sum($args[0]);
     } else if (is_object($args[0])) {
-        return array_sum(iterator_to_array($args[0]));
+        return array_sum(Core::value($args[0]));
     }
     return array_sum($args);
 };
@@ -201,7 +201,7 @@ $product = function () {
     if (is_array($args[0])) {
         return array_product($args[0]);
     } else if (is_object($args[0])) {
-        return array_product(iterator_to_array($args[0]));
+        return array_product(Core::value($args[0]));
     }
     return array_product($args);
 };
@@ -213,7 +213,11 @@ $product = function () {
  * => true`
  */
 $all = $every = $curry(function ($f, $xs) {
-    foreach ($xs as $x) if (! call_user_func($f, $x)) return false;
+    foreach ($xs as $x) {
+        if (! call_user_func($f, $x)) {
+             return false;
+        }
+    }
     return true;
 }, 2);
 /**
@@ -224,7 +228,11 @@ $all = $every = $curry(function ($f, $xs) {
  * => false`
  */
 $any = $some = $curry(function ($f, $xs) {
-    foreach ($xs as $x) if (call_user_func($f, $x)) return true;
+    foreach ($xs as $x) {
+        if (call_user_func($f, $x)) {
+            return true;
+        }
+    }
     return false;
 }, 2);
 /**
@@ -235,7 +243,11 @@ $any = $some = $curry(function ($f, $xs) {
  * => true`
  */
 $none = $curry(function ($f, $xs) {
-    foreach ($xs as $x) if (call_user_func($f, $x)) return false;
+    foreach ($xs as $x) {
+        if (call_user_func($f, $x)) {
+            return false;
+        }
+    }
     return true;
 }, 2);
 
@@ -245,7 +257,6 @@ $eq = $curry(function () {
     switch (count($args)) {
         case 2: return $args[0] === $args[1];
         case 3: return ($args[0] === $args[1]) && ($args[1] === $args[2]);
-        case 1: return true;
     }
     foreach ($args as $i => $v) {
         if (! isset($args[$i + 1])) break;
@@ -312,7 +323,6 @@ $gte = $curry(function () {
     switch (count($args)) {
         case 2: return $args[0] >= $args[1];
         case 3: return ($args[0] >= $args[1]) && ($args[1] >= $args[2]);
-        case 1: return true;
     }
     foreach ($args as $i => $v) {
         if (! isset($args[$i + 1])) break;
