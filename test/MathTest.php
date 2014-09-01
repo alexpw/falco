@@ -6,10 +6,10 @@ class MathTest extends PHPUnit_Framework_TestCase
     public function testCount()
     {
         $in = array();
-        foreach (range(1,100) as $i) {
+        foreach (range(1,1000) as $i) {
             $in[] = $i;
-            $this->assertEquals(count($in), F::count($in));
-            $this->assertEquals(count($in), F::count(F::lazy($in)));
+            $this->assertEquals($i, F::count($in));
+            $this->assertEquals($i, F::count(F::lazy($in)));
         }
 
         $actual = F::count(F::take(10, F::cycle([1,2,3])));

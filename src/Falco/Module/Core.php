@@ -70,7 +70,7 @@ $curry = function ($f, $numArgs = null) {
                     if (count($args) === 2) {
                         return function ($z) use ($args, $f) {
                             list($x, $y) = $args;
-                            return call_user_func($f, $x, $y, $z);
+                            return $f($x, $y, $z);
                         };
                     }
                     return call_user_func_array($f, $args);
@@ -78,7 +78,7 @@ $curry = function ($f, $numArgs = null) {
             } else if (count($args) === 2) {
                 return function ($z) use ($args, $f) {
                     list($x, $y) = $args;
-                    return call_user_func($f, $x, $y, $z);
+                    return $f($x, $y, $z);
                 };
             }
             return call_user_func_array($f, $args);
@@ -133,7 +133,6 @@ $partial = function () {
  */
 $always = $constantly = function ($x) {
     return function () use ($x) {
-        $args = func_get_args();
         return $x;
     };
 };
@@ -215,7 +214,7 @@ $product = function () {
  */
 $all = $every = $curry(function ($f, $xs) {
     foreach ($xs as $x) {
-        if (! call_user_func($f, $x)) {
+        if (! $f($x)) {
              return false;
         }
     }
@@ -230,7 +229,7 @@ $all = $every = $curry(function ($f, $xs) {
  */
 $any = $some = $curry(function ($f, $xs) {
     foreach ($xs as $x) {
-        if (call_user_func($f, $x)) {
+        if ($f($x)) {
             return true;
         }
     }
@@ -245,7 +244,7 @@ $any = $some = $curry(function ($f, $xs) {
  */
 $none = $curry(function ($f, $xs) {
     foreach ($xs as $x) {
-        if (call_user_func($f, $x)) {
+        if ($f($x)) {
             return false;
         }
     }
@@ -481,7 +480,7 @@ $contains = $curry(function ($needle, $haystack) {
 // ### juxt
 $juxt = function () {
     $fns = func_get_args();
-    return function ($x) {
+    return function ($x) use ($fns, $out) {
         $out = array();
         foreach ($fns as $f) {
             $out[] = $f($x);
@@ -867,15 +866,16 @@ $map = $curry(function () {
         return new Iter\Map($f, $args);
     }
 
-    $out  = array();
     switch (count($args)) {
         case 1:
             list($xs) = $args;
             if (is_string($xs)) $xs = str_split($xs);
             if (is_array($xs)) {
+                $out  = array();
                 foreach ($xs as $k => $x) {
                     $out[$k] = $f($x);
                 }
+                return $out;
             }
             break;
         case 2:
@@ -883,6 +883,7 @@ $map = $curry(function () {
             if (is_string($xs)) $xs = str_split($xs);
             if (is_string($ys)) $ys = str_split($ys);
             reset($ys);
+            $out = array();
             foreach ($xs as $x) {
                 if ($y = each($ys)) {
                     $out[] = $f($x, $y[1]);
@@ -890,16 +891,17 @@ $map = $curry(function () {
                     break;
                 }
             }
-            break;
+            return $out;
         case 3:
             list($xs, $ys, $zs) = $args;
             if (is_string($xs)) $xs = str_split($xs);
             if (is_string($ys)) $ys = str_split($ys);
             if (is_string($zs)) $zs = str_split($zs);
             reset($ys); reset($zs);
+            $out = array();
             foreach ($xs as $x) {
-                if (list($yk, $yv) = each($ys)) {
-                    if (list($zk, $zv) = each($zs)) {
+                if (list(, $yv) = each($ys)) {
+                    if (list(, $zv) = each($zs)) {
                         $out[] = $f($x, $yv, $zv);
                     } else {
                         break;
@@ -908,7 +910,7 @@ $map = $curry(function () {
                     break;
                 }
             }
-            break;
+            return $out;
         default:
             $numArgs = count($args);
             $xs = array_shift($args);
@@ -917,21 +919,31 @@ $map = $curry(function () {
                 if (is_string($arg)) $args[$i] = str_split($arg);
                 else reset($arg);
             }
+
+            $out = array();
+            $vs  = array();
             foreach ($xs as $x) {
-                $vals = array($x);
-                for ($i = 0; $i < $numArgs - 1; $i++) {
-                    if (list($k, $v) = each($args[$i])) {
-                        $vals[] = $v;
+                $vs[0] = $x;
+                for ($j = 1; $j < $numArgs; $j++) {
+                    if (list(, $v) = each($args[$j - 1])) {
+                       $vs[$j] = $v;
+                    } else {
+                        break 2;
                     }
                 }
-                if (count($vals) !== $numArgs) {
-                    break;
+                switch ($numArgs) {
+                    case 4:
+                        $out[] = $f($vs[0], $vs[1], $vs[2], $vs[3]);
+                        break;
+                    case 5:
+                        $out[] = $f($vs[0], $vs[1], $vs[2], $vs[3], $vs[4]);
+                        break;
+                    default:
+                    $out[] = call_user_func_array($f, $vs);
                 }
-                $out[] = call_user_func_array($f, $vals);
             }
-            break;
+            return $out;
     }
-    return $out;
 }, 2);
 
 // ### mapcat, flatMap
