@@ -12,6 +12,7 @@ $lazy = function ($xs) {
     }
     return $xs;
 };
+
 $value = $val = function ($xs) {
     if ($xs instanceof \Iterator) {
         // iterator_to_array fails when combining Limit and Infinite iterators.
@@ -338,7 +339,7 @@ $gte = $curry(function () {
 $not = function ($f) {
     if (is_callable($f)) {
         return function ($x) use ($f) {
-            return ! call_user_func($f, $x);
+            return ! $f($x);
         };
     } else {
         return function ($x) use ($f) {
@@ -352,28 +353,21 @@ $andBy = function () {
     $fns = func_get_args();
     switch (count($fns)) {
         case 1: list($f) = $fns;
-            return function () use ($f) {
-                $args = func_get_args();
-                return call_user_func_array($f, $args);
+            return function ($x) use ($f) {
+                return $f($x);
             };
         case 2: list($f, $g) = $fns;
-            return function () use ($f, $g) {
-                $args = func_get_args();
-                return call_user_func_array($f, $args) &&
-                        call_user_func_array($g, $args);
+            return function ($x) use ($f, $g) {
+                return $f($x) && $g($x);
             };
         case 3: list($f, $g, $h) = $fns;
-            return function () use ($f, $g, $h) {
-                $args = func_get_args();
-                return call_user_func_array($f, $args) &&
-                        call_user_func_array($g, $args) &&
-                        call_user_func_array($h, $args);
+            return function ($x) use ($f, $g, $h) {
+                return $f($x) && $g($x) && $h($x);
             };
     }
-    return function () use ($fns) {
-        $args = func_get_args();
-        return Core::all(function ($f) use ($args) {
-            return call_user_func_array($f, $args);
+    return function ($x) use ($fns) {
+        return Core::all(function ($f) use ($x) {
+            return $f($x);
         }, $fns);
     };
 };
@@ -382,28 +376,21 @@ $orBy = function () {
     $fns = func_get_args();
     switch (count($fns)) {
         case 1: list($f) = $fns;
-            return function () use ($f) {
-                $args = func_get_args();
-                return call_user_func_array($f, $args);
+            return function ($x) use ($f) {
+                return $f($x);
             };
         case 2: list($f, $g) = $fns;
-            return function () use ($f, $g) {
-                $args = func_get_args();
-                return call_user_func_array($f, $args) ||
-                        call_user_func_array($g, $args);
+            return function ($x) use ($f, $g) {
+                return $f($x) || $g($x);
             };
         case 3: list($f, $g, $h) = $fns;
-            return function () use ($f, $g, $h) {
-                $args = func_get_args();
-                return call_user_func_array($f, $args) ||
-                        call_user_func_array($g, $args) ||
-                        call_user_func_array($h, $args);
+            return function ($x) use ($f, $g, $h) {
+                return $f($x) || $g($x) || $h($x);
             };
     }
-    return function () use ($fns) {
-        $args = func_get_args();
-        return ! Core::none(function ($f) use ($args) {
-            return call_user_func_array($f, $args);
+    return function ($x) use ($fns) {
+        return ! Core::none(function ($f) use ($x) {
+            return $f($x);
         }, $fns);
     };
 };
@@ -423,11 +410,8 @@ $count = function ($xs) {
 // ### countBy
 $countBy = $curry(function ($f, $xs) {
     if (is_string($xs)) return str_split($xs);
-    $cnt = 0;
-    foreach ($xs as $x) {
-        $cnt += call_user_func($f, $x);
-    }
-    return $cnt;
+    if (is_object($xs)) $xs = Core::value($xs);
+    return array_reduce($xs, $f, 0);
 }, 2);
 // ### values
 $values = function ($x) {
@@ -442,26 +426,26 @@ $keys = function ($x) {
     if (is_string($x)) return range(0, strlen($x));
 };
 
-// ### toPairs
-$toPairs = function ($xs) {
-    if (is_string($xs)) return str_split($xs);
-    if (is_array($xs) || (is_object($xs) && $xs instanceof Traversable)) {
-        $out = array();
-        while ($pair = each($xs)) {
-            $out[] = $pair;
-        }
-        return $out;
-    }
-};
-// ### fromPairs
-$fromPairs = function ($xs) {
-    reset($xs);
-    $out = array();
-    while (list($key, $val) = $xs) {
-        $out[$key] = $val;
-    }
-    return $out;
-};
+#// ### toPairs
+#$toPairs = function ($xs) {
+#    if (is_string($xs)) return str_split($xs);
+#    if (is_array($xs) || (is_object($xs) && $xs instanceof Traversable)) {
+#        $out = array();
+#        while ($pair = each($xs)) {
+#            $out[] = $pair;
+#        }
+#        return $out;
+#    }
+#};
+#// ### fromPairs
+#$fromPairs = function ($xs) {
+#    reset($xs);
+#    $out = array();
+#    while (list($key, $val) = $xs) {
+#        $out[$key] = $val;
+#    }
+#    return $out;
+#};
 
 // ### sort
 $sort    = function ($xs) { sort($xs);  return $xs; };
@@ -500,7 +484,7 @@ $juxt = function () {
     return function ($x) {
         $out = array();
         foreach ($fns as $f) {
-            $out[] = call_user_func($f, $x);
+            $out[] = $f($x);
         }
         return $out;
     };
@@ -514,32 +498,35 @@ $apply = 'call_user_func_array';
 // ### compose
 $compose = function () {
     $fns = func_get_args();
-    $c = 'call_user_func';
     switch (count($fns)) {
         case 1: list($f) = $fns;
-        return function ($x) use ($c, $f) {
-            return $c($f, $x);
+        return function ($x) use ($f) {
+            #return $c($f, $x);
+            return $f($x);
         };
         case 2: list($f, $g) = $fns;
-        return function ($x) use ($c, $f, $g) {
-            return $c($f, $c($g, $x));
+        return function ($x) use ($f, $g) {
+            #return $c($f, $c($g, $x));
+            return $f($g($x));
         };
         case 3: list($f, $g, $h) = $fns;
-        return function ($x) use ($c, $f, $g, $h) {
-            return $c($f, $c($g, $c($h, $x)));
+        return function ($x) use ($f, $g, $h) {
+            #return $c($f, $c($g, $c($h, $x));
+            return $f($g($h($x)));
         };
         case 4: list($f, $g, $h, $i) = $fns;
-        return function ($x) use ($c, $f, $g, $h, $i) {
-            return $c($f, $c($g, $c($h, $c($i, $x))));
+        return function ($x) use ($f, $g, $h, $i) {
+            #return $c($f, $c($g, $c($h, $c($i, $x))));
+            return $f($g($h($i($x))));
         };
         case 5: list($f, $g, $h, $i, $j) = $fns;
-        return function ($x) use ($c, $f, $g, $h, $i, $j) {
-            return $c($f, $c($g, $c($h, $c($i, $c($j, $x)))));
+        return function ($x) use ($f, $g, $h, $i, $j) {
+            return $f($g($h($i($j($x)))));
         };
     }
     return function ($x) use ($fns) {
         for ($i = count($fns) - 1;  $i >= 0; $i--) {
-            $x = call_user_func($fns[$i], $x);
+            $x = $fns[$i]($x);
         }
         return $x;
     };
@@ -554,15 +541,15 @@ $pipe = function () {
 // ### useOver
 $useOver = function ($used, $over) {
     return Core::curry(function ($overArg, $usedArg) use ($used, $over) {
-        $overNow = call_user_func($over, $overArg);
-        return call_user_func($used, $overNow, $usedArg);
+        $overNow = $over($overArg);
+        return $used($overNow, $usedArg);
     }, 2);
 };
 // ### useUnder
 $useUnder = function ($used, $under) {
     return Core::curry(function ($usedArg, $underArg) use ($used, $under) {
-        $underNow = call_user_func($under, $underArg);
-        return call_user_func($used, $underNow, $usedArg);
+        $underNow = $under($underArg);
+        return $used($underNow, $usedArg);
     }, 2);
 };
 
@@ -573,7 +560,7 @@ $useWith = function () {
     return $curry(function () use ($fn, $transformers) {
         $args = func_get_args();
         foreach ($transformers as $i => $trans) {
-            $args[$i] = call_user_func($trans, $args[$i]);
+            $args[$i] = $trans($args[$i]);
         }
         return call_user_func_array($fn, $args);
     }, count($transformers));
@@ -646,7 +633,7 @@ $where = function ($kvs, $strict = true) {
             if (is_array($el)) {
                 foreach ($kvs as $k => $v) {
                     if (is_callable($v)) {
-                        if (! call_user_func($v, $el[$k])) {
+                        if (! $v($el[$k])) {
                             return false;
                         }
                     }
@@ -657,7 +644,7 @@ $where = function ($kvs, $strict = true) {
             } else {
                 foreach ($kvs as $k => $v) {
                     if (is_callable($v)) {
-                        if (! call_user_func($v, $el->$k)) {
+                        if (! $v($el->$k)) {
                             return false;
                         }
                     }
@@ -673,7 +660,7 @@ $where = function ($kvs, $strict = true) {
             if (is_array($el)) {
                 foreach ($kvs as $k => $v) {
                     if (is_callable($v)) {
-                        if (! call_user_func($v, $el[$k])) {
+                        if (! $v($el[$k])) {
                             return false;
                         }
                     }
@@ -684,7 +671,7 @@ $where = function ($kvs, $strict = true) {
             } else {
                 foreach ($kvs as $k => $v) {
                     if (is_callable($v)) {
-                        if (! call_user_func($v, $el->$k)) {
+                        if (! $v($el->$k)) {
                             return false;
                         }
                     }
@@ -730,7 +717,7 @@ $last = function ($xs) {
     if (is_string($xs)) return $xs[strlen($xs) - 1];
     if (is_array($xs))  return $xs[count($xs) - 1];
     if (is_object($xs)) {
-        $arr = iterator_to_array($xs);
+        $arr = Core::value($xs);
         return $arr[count($arr) - 1];
     }
 };
@@ -765,7 +752,7 @@ $takeWhile = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $out = array();
         foreach ($xs as $k => $x) {
-            if (! call_user_func($f, $x)) {
+            if (! $f($x)) {
                 break;
             }
             $out[$k] = $x;
@@ -782,7 +769,7 @@ $takeUntil = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $out = array();
         foreach ($xs as $k => $x) {
-            if (call_user_func($f, $x)) {
+            if ($f($x)) {
                 $out[$k] = $x;
                 return;
             }
@@ -800,7 +787,7 @@ $skipWhile = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $i = 0;
         foreach ($xs as $k => $x) {
-            if (call_user_func($f, $x)) {
+            if ($f($x)) {
                 $i++;
             } else {
                 break;
@@ -818,7 +805,7 @@ $skipUntil = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $i = 0;
         foreach ($xs as $k => $x) {
-            if (! call_user_func($f, $x)) {
+            if (! $f($x)) {
                 $i++;
             } else {
                 $i++; break;
@@ -887,7 +874,7 @@ $map = $curry(function () {
             if (is_string($xs)) $xs = str_split($xs);
             if (is_array($xs)) {
                 foreach ($xs as $k => $x) {
-                    $out[$k] = call_user_func($f, $x);
+                    $out[$k] = $f($x);
                 }
             }
             break;
@@ -898,7 +885,7 @@ $map = $curry(function () {
             reset($ys);
             foreach ($xs as $x) {
                 if ($y = each($ys)) {
-                    $out[] = call_user_func($f, $x, $y[1]);
+                    $out[] = $f($x, $y[1]);
                 } else {
                     break;
                 }
@@ -913,7 +900,7 @@ $map = $curry(function () {
             foreach ($xs as $x) {
                 if (list($yk, $yv) = each($ys)) {
                     if (list($zk, $zv) = each($zs)) {
-                        $out[] = call_user_func($f, $x, $yv, $zv);
+                        $out[] = $f($x, $yv, $zv);
                     } else {
                         break;
                     }
@@ -950,7 +937,7 @@ $map = $curry(function () {
 // ### mapcat, flatMap
 $mapcat = $flatMap = $curry(function () {
     $fn_with_args = func_get_args();
-    return Core::call(Core::concat(), Core::apply(Core::map(), $fn_with_args));
+    return Core::concat(call_user_func_array(Core::map(), $fn_with_args));
 }, 2);
 
 // ### filter
@@ -959,7 +946,7 @@ $filter = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $out = array();
         foreach ($xs as $k => $x) {
-            if (call_user_func($f, $x)) {
+            if ($f($x)) {
                 $out[$k] = $x;
             }
         }
@@ -974,7 +961,7 @@ $filterkv = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $out = array();
         while ($x = each($xs)) {
-            if (call_user_func($f, $x)) {
+            if ($f($x)) {
                 $out[$x[0]] = $x[1];
             }
         }
@@ -993,7 +980,7 @@ $remove = $curry(function ($f, $xs) {
     if (is_array($xs)) {
         $out = array();
         foreach ($xs as $k => $x) {
-            if (! call_user_func($f, $x)) {
+            if (! $f($x)) {
                 $out[$k] = $x;
             }
         }
@@ -1007,7 +994,7 @@ $removekv = $curry(function ($f, $xs) {
     if (is_string($xs)) $xs = str_split($xs);
     $out = array();
     while ($x = each($xs)) {
-        if (! call_user_func($f, $x)) {
+        if (! $f($x)) {
             $out[$x[0]] = $x[1];
         }
     }
@@ -1040,7 +1027,7 @@ $reducekv = $foldkv = $curry(function () {
     if (is_string($xs)) $xs = str_split($xs);
     $accumulator = $initialValue;
     foreach ($xs as $k => $v) {
-        $accumulator = call_user_func($f, $accumulator, $k, $v);
+        $accumulator = $f($accumulator, $k, $v);
     }
     return $accumulator;
 }, 2);
@@ -1072,7 +1059,7 @@ $foldrkv = $curry(function () {
     $accumulator = $initialValue;
     $xs = array_reverse($xs);
     foreach ($xs as $k => $v) {
-        $accumulator = call_user_func($f, $accumulator, $k, $v);
+        $accumulator = $f($accumulator, $k, $v);
     }
     return $accumulator;
 }, 2);
@@ -1087,7 +1074,7 @@ $partitionBy = $curry(function ($f, $xs) {
         $flag = null;
         $group = array();
         foreach ($xs as $x) {
-            $truthy = call_user_func($f, $x);
+            $truthy = $f($x);
             if ($truthy !== $flag) {
                 $flag = $truthy;
                 if (count($group)) {
@@ -1181,7 +1168,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                 $kval = null;
                 if (is_callable($keyFn)) {
                     if (isset($n[$keyKey])) {
-                        $kval = call_user_func($keyFn, $n[$keyKey]);
+                        $kval = $keyFn($n[$keyKey]);
                     }
                 } else if (isset($n[$keyFn])) {
                     $kval = $n[$keyFn];
@@ -1202,7 +1189,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                         foreach ($mixedVals as $valKey => $valFn) {
                             if (is_callable($valFn)) {
                                 if (isset($n[$valKey])) {
-                                    $val[$valKey] = call_user_func($valFn, $n[$valKey]);
+                                    $val[$valKey] = $valFn($n[$valKey]);
                                 }
                             } else if (isset($n[$valFn])) {
                                 $valKey = $valFn;
@@ -1211,7 +1198,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                         }
                         $ref[$kval] = $val;
                     } else if (is_callable($mixedVals)) {
-                        $ref[$kval] = call_user_func($mixedVals, $n);
+                        $ref[$kval] = $mixedVals($n);
                     } else if (isset($n[$mixedVals])) {
                         $ref[$kval] = $n[$mixedVals];
                     }
@@ -1239,7 +1226,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                 foreach ($mixedVals as $valKey => $valFn) {
                     if (is_callable($valFn)) {
                         if (isset($n[$valKey])) {
-                            $val[$valKey] = call_user_func($valFn, $n[$valKey]);
+                            $val[$valKey] = $valFn($n[$valKey]);
                         }
                     } else if (isset($n[$valFn])) {
                         $valKey = $valFn;
@@ -1250,7 +1237,7 @@ $indexBy = $curry(function ($mixedKeys, $mixedVals, $in) {
             }
         } else if (is_callable($mixedVals)) {
             foreach ($in as $n) {
-                $out[$n[$key]] = call_user_func($mixedVals, $n);
+                $out[$n[$key]] = $mixedVals($n);
             }
         } else {
             foreach ($in as $n) {
@@ -1323,7 +1310,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                 $kval = null;
                 if (is_callable($keyFn)) {
                     if (isset($n[$keyKey])) {
-                        $kval = call_user_func($keyFn, $n[$keyKey]);
+                        $kval = $keyFn($n[$keyKey]);
                     }
                 } else if (isset($n[$keyFn])) {
                     $kval = $n[$keyFn];
@@ -1344,7 +1331,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                         foreach ($mixedVals as $valKey => $valFn) {
                             if (is_callable($valFn)) {
                                 if (isset($n[$valKey])) {
-                                    $val[$valKey] = call_user_func($valFn, $n[$valKey]);
+                                    $val[$valKey] = $valFn($n[$valKey]);
                                 }
                             } else if (isset($n[$valFn])) {
                                 $valKey = $valFn;
@@ -1353,7 +1340,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                         }
                         $ref[$kval][] = $val;
                     } else if (is_callable($mixedVals)) {
-                        $ref[$kval][] = call_user_func($mixedVals, $n);
+                        $ref[$kval][] = $mixedVals($n);
                     } else if (isset($n[$mixedVals])) {
                         $ref[$kval][] = $n[$mixedVals];
                     }
@@ -1381,7 +1368,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
                 foreach ($mixedVals as $valKey => $valFn) {
                     if (is_callable($valFn)) {
                         if (isset($n[$valKey])) {
-                            $val[$valKey] = call_user_func($valFn, $n[$valKey]);
+                            $val[$valKey] = $valFn($n[$valKey]);
                         }
                     } else if (isset($n[$valFn])) {
                         $valKey = $valFn;
@@ -1392,7 +1379,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
             }
         } else if (is_callable($mixedVals)) {
             foreach ($in as $n) {
-                $out[$n[$key]][] = call_user_func($mixedVals, $n);
+                $out[$n[$key]][] = $mixedVals($n);
             }
         } else {
             foreach ($in as $n) {

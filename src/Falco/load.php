@@ -1,6 +1,7 @@
 <?php
 
 use Falco\Core;
+#use Falco\Module\Core;
 
 $dir = dirname($file);
 $ds  = DIRECTORY_SEPARATOR;
