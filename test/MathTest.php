@@ -1,9 +1,10 @@
 <?php
 use Falco\Core as F;
 
-class MathTest extends PHPUnit_Framework_TestCase {
-
-	public function testMin() {
+class MathTest extends PHPUnit_Framework_TestCase
+{
+	public function testMin()
+    {
 		$this->assertEquals(-2, F::min(-2, -1, 0, 1, 2));
 		$this->assertEquals(-2, F::min(-1, 1, 0, 2, -2));
 		$xs = range(-2, 2);
@@ -11,7 +12,8 @@ class MathTest extends PHPUnit_Framework_TestCase {
 		shuffle($xs);
 		$this->assertEquals(-2, F::min($xs));
 	}
-	public function testMax() {
+	public function testMax()
+    {
 		$this->assertEquals(2, F::max(-2, -1, 0, 1, 2));
 		$this->assertEquals(2, F::max(-1, 1, 0, 2, -2));
 		$xs = range(-2, 2);
@@ -20,12 +22,14 @@ class MathTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(2, F::max($xs));
 	}
 
-	public function testSum() {
+	public function testSum()
+    {
 		$nums = range(-100, 100);
 		$this->assertEquals(array_sum($nums), F::sum($nums));
 		$this->assertEquals(array_sum($nums), F::apply(F::sum(), $nums));
 	}
-	public function testProduct() {
+	public function testProduct()
+    {
 		$nums = range(-100, 100);
 		unset($nums[100]); // remove the val 0, so it doesn't ruin the product
 
@@ -33,7 +37,8 @@ class MathTest extends PHPUnit_Framework_TestCase {
 		$this->assertEquals(array_product($nums), F::apply(F::product(), $nums));
 	}
 
-	public function testAddBy() {
+	public function testAddBy()
+    {
 		$x_range = range(-100, 100);
 		foreach (range(-10, 10) as $n) {
 			$f = F::addBy($n);
@@ -42,7 +47,8 @@ class MathTest extends PHPUnit_Framework_TestCase {
 			}
 		}
 	}
-	public function testSubtractBy() {
+	public function testSubtractBy()
+    {
 		$x_range = range(-100, 100);
 		foreach (range(-10, 10) as $n) {
 			$f = F::subtractBy($n);
@@ -51,7 +57,8 @@ class MathTest extends PHPUnit_Framework_TestCase {
 			}
 		}
 	}
-	public function testMultiplyBy() {
+	public function testMultiplyBy()
+    {
 		$x_range = range(-100, 100);
 		foreach (range(-10, 10) as $n) {
 			$f = F::multiplyBy($n);
@@ -60,7 +67,8 @@ class MathTest extends PHPUnit_Framework_TestCase {
 			}
 		}
 	}
-	public function testDivideBy() {
+	public function testDivideBy()
+    {
 		$x_range = range(-100, 100);
 		foreach (range(-10, 10) as $n) {
 			if ($n === 0) continue;

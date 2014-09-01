@@ -12,8 +12,21 @@ $lazy = function ($xs) {
     }
     return $xs;
 };
-$value = function ($xs) {
+$value = $val = function ($xs) {
     if ($xs instanceof \Iterator) {
+        // iterator_to_array fails when combining Limit and Infinite iterators.
+        // meaning, that it only makes it through 1 cycle, but can't rewind.
+        if ($xs instanceof \LimitIterator) {
+            $out = array();
+            foreach ($xs as $k => $v) {
+                if (is_string($k)) {
+                    $out[$k] = $v;
+                } else {
+                    $out[] = $v;
+                }
+            }
+            return $out;
+        }
         return iterator_to_array($xs);
     }
     return $xs;
@@ -441,9 +454,9 @@ $fromPairs = function ($xs) {
 };
 
 // ### sort
-$sort    = 'sort';
-$ksort   = 'ksort';
-$asort   = 'asort';
+$sort    = function ($xs) { sort($xs);  return $xs; };
+$ksort   = function ($xs) { ksort($xs); return $xs; };
+$asort   = function ($xs) { asort($xs); return $xs; };
 $sortBy  = $curry(function ($cmp, $in) { usort($in, $cmp);  return $in; }, 2);
 $ksortBy = $curry(function ($cmp, $in) { uksort($in, $cmp); return $in; }, 2);
 $asortBy = $curry(function ($cmp, $in) { uasort($in, $cmp); return $in; }, 2);
@@ -824,7 +837,8 @@ $iterate = $curry(function ($f, $x) {
 }, 2);
 
 $cycle = function ($xs) {
-    return new \InfiniteIterator(Core::lazy($xs));
+    $iter = Core::lazy($xs);
+    return new \InfiniteIterator($iter);
 };
 
 // ### concat
@@ -926,7 +940,7 @@ $map = $curry(function () {
 // ### mapcat, flatMap
 $mapcat = $flatMap = $curry(function () {
     $fn_with_args = func_get_args();
-    return call_user_func(Core::concat(), call_user_func_array(Core::map(), $fn_with_args));
+    return Core::call(Core::concat(), Core::apply(Core::map(), $fn_with_args));
 }, 2);
 
 // ### filter
@@ -990,7 +1004,7 @@ $removekv = $curry(function ($f, $xs) {
     return $out;
 }, 2);
 
-// ### reduce, $fold, foldl
+// ### reduce, fold, foldl
 $reduce = $fold = $foldl = $curry(function () {
     $args = func_get_args();
     $f    = array_shift($args);
@@ -1077,9 +1091,8 @@ $partitionBy = $curry(function ($f, $xs) {
             $out[] = $group;
         }
         return $out;
-    } else {
-        return new Iter\PartitionBy($f, $xs);
     }
+    return new Iter\PartitionBy($f, $xs);
 }, 2);
 
 /**
@@ -1390,7 +1403,7 @@ $groupBy = $curry(function ($mixedKeys, $mixedVals, $in) {
  * @param int|null $limit      An optional maximum size of the internal cache.
  * @return Closure The newly memoized version of $fn.
  */
-$memoize = function ($fn, $cacheKeyFn, $limit = null) {
+$memoize = function ($fn, $cacheKeyFn = 'json_encode', $limit = null) {
     $cache = array();
     return function () use ($fn, $cacheKeyFn, $limit, & $cache) {
         $args = func_get_args();

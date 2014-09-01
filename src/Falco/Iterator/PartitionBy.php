@@ -5,8 +5,10 @@ class PartitionBy extends \IteratorIterator
 {
     private $fn;
     private $xs;
-    private $x;
+    private $curr;
     private $val;
+    private $pos;
+    private $oneMore;
 
     public function __construct($fn, $iter)
     {
@@ -17,10 +19,19 @@ class PartitionBy extends \IteratorIterator
 
     public function rewind()
     {
+        $this->oneMore = false;
         $this->iter->rewind();
-        $this->x   = $this->iter->current();
-        $this->val = call_user_func($this->fn, $this->x);
-        $this->next();
+        if ($this->iter->valid()) {
+            $this->curr = $this->iter->current();
+            $this->val  = call_user_func($this->fn, $this->curr);
+            $this->pos  = -1;
+            $this->next();
+        }
+    }
+
+    public function key()
+    {
+        return $this->pos;
     }
 
     public function current()
@@ -30,27 +41,30 @@ class PartitionBy extends \IteratorIterator
 
     public function valid()
     {
-        return $this->iter->valid();
+        return $this->iter->valid() || $this->oneMore;
     }
 
     public function next()
     {
+        $this->pos++;
+
         $iter = $this->iter;
         $fn   = $this->fn;
         $val  = $this->val;
-        $xs   = array($this->x);
+        $xs   = array($this->curr);
 
         while (true) {
             $iter->next();
-            $x = $iter->current();
             if (! $iter->valid()) {
+                $this->oneMore = ! $this->oneMore;
                 break;
             }
+            $x     = $iter->current();
             $prev  = $val;
             $val   = call_user_func($fn, $x);
 
             if ($val !== $prev) {
-                $this->x = $x;
+                $this->curr = $x;
                 break;
             }
             $xs[] = $x;
