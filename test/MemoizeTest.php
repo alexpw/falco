@@ -15,6 +15,7 @@ class MemoizeTest extends PHPUnit_Framework_TestCase
             F::identity()
         );
 
+        #$memoFib(1);
         #foreach (range(0,1) as $i) {
         #    $this->assertEquals($i, $numCalls);
         #    $memoFib($i);

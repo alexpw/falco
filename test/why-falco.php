@@ -1,6 +1,6 @@
 <?php
 
-require 'vendor/autoload.php';
+require dirname(dirname(__FILE__)) . '/vendor/autoload.php';
 
 use Falco\Core as F;
 
