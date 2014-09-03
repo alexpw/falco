@@ -16,15 +16,18 @@ class Timer
         $this->maxNameLength = max(strlen($name), $this->maxNameLength);
 
         $run = new stdClass;
-        $run->start = microtime(true);
-        $run->name  = $name;
+        $run->start_mem  = memory_get_usage();
+        $run->start_time = microtime(true);
+        $run->name       = $name;
         return $run;
     }
 
     public function end(stdClass $run)
     {
         $end         = microtime(true);
-        $run->time   = bcsub($end, $run->start, 6) * 1000;
+        $mem         = memory_get_usage() - $run->start_mem;
+        $run->time   = bcsub($end, $run->start_time, 6) * 1000;
+        $run->mem    = $this->memoryToString($mem);
         $this->total = bcadd($this->total, $run->time);
 
         $this->timers->attach($run);
@@ -36,13 +39,14 @@ class Timer
         $margin = str_repeat(' ', $marginLength);
 
         $maxNameLength = $this->maxNameLength + 7;
-        $dashes = str_repeat('-', $maxNameLength + 25 + $marginLength);
+        $dashes = str_repeat('-', $maxNameLength + 35 + $marginLength);
 
         $out = '';
         $out .= $margin .
                 str_pad('timer', $maxNameLength) .
-                str_pad("time (ms)", 16) .
-                str_pad("perc ", 8) .
+                str_pad("time (ms)", 12) .
+                str_pad("perc ", 12) .
+                str_pad("mem", 6, ' ', STR_PAD_LEFT) .
                 "\n";
 
         $out .= "$dashes\n";
@@ -57,11 +61,21 @@ class Timer
             );
             $out .= $margin .
                     str_pad($run->name, $maxNameLength, ' ') .
-                    str_pad($run->time, 14) .
-                    str_pad($perc, 8, ' ', STR_PAD_LEFT) .
+                    str_pad($run->time, 10) .
+                    str_pad($perc, 6, ' ', STR_PAD_LEFT) .
+                    str_pad($run->mem, 14, ' ', STR_PAD_LEFT) .
                     "\n";
         }
         $out .= "$dashes\n";
         return $out;
+    }
+    private function memoryToString($mem) {
+        if ($mem < 1024) {
+            return "$mem Bytes";
+        } else if ($mem < 1048576) {
+            return round($mem / 1024, 2)." KB";
+        } else {
+            return round($mem / 1048576, 2)." MB";
+        }
     }
 }

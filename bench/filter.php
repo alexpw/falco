@@ -35,12 +35,12 @@ $t->end($run);
 
 $rs  = array();
 $run = $t->start("filter strict $max");
-F::filter($odd, $xs);
+$rs  = F::filter($odd, $xs);
 $t->end($run);
 
 $rs  = array();
 $run = $t->start("filter lazy $max");
-F::value(F::filter($odd, $lxs));
+$rs  = F::value(F::filter($odd, $lxs));
 $t->end($run);
 
 $rs  = array();
@@ -95,8 +95,9 @@ foreach (F::filter($odd, $xs) as $x) {
 }
 $t->end($run);
 
+$rs  = array();
 $run = $t->start("filter strict $limit ($max) take");
-F::take($limit, F::filter($odd, $xs));
+$rs  = F::take($limit, F::filter($odd, $xs));
 $t->end($run);
 
 $rs  = array();
@@ -121,24 +122,27 @@ foreach (F::filter($odd, $lxs) as $x) {
 }
 $t->end($run);
 
+$rs  = array();
 $run = $t->start("filter lazy $limit take");
-F::value(F::take($limit, F::filter($odd, $lxs)));
+$rs  = F::value(F::take($limit, F::filter($odd, $lxs)));
 $t->end($run);
 
 $rs  = array();
 $run = $t->start("filter lazyrange $limit foreach");
+
 foreach(F::filter($odd, F::lazyrange(1, $limit * 2)) as $x) {
     $rs[] = $x;
 }
 $t->end($run);
-$rs = array();
 
+$rs  = array();
 $run = $t->start("filter lazyrange $limit value");
-F::value(F::filter($odd, F::lazyrange(1, $limit * 2)));
+$rs  = F::value(F::filter($odd, F::lazyrange(1, $limit * 2)));
 $t->end($run);
 
+$rs  = array();
 $run = $t->start("filter lazyrange $limit take");
-F::value(F::take($limit, F::filter($odd, F::lazyrange(1, $limit * 2))));
+$rs  = F::value(F::take($limit, F::filter($odd, F::lazyrange(1, $limit * 2))));
 $t->end($run);
 
 echo $t;
