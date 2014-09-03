@@ -1,5 +1,5 @@
 <?php
-namespace Falco;
+namespace Falco\Module;
 
 use Falco\Core as F;
 use Falco\Support\Thread;
@@ -116,7 +116,7 @@ $partial = function () {
     return function () use ($f, $args) {
         $rest = func_get_args();
         foreach ($args as $i => $a) {
-            if ($a === Core::_) {
+            if ($a === F::_) {
                 $args[$i] = array_shift($rest);
             }
         }
@@ -185,7 +185,7 @@ $sum = function () {
     if (is_array($args[0])) {
         return array_sum($args[0]);
     } else if (is_object($args[0])) {
-        return array_sum(Core::value($args[0]));
+        return array_sum(F::value($args[0]));
     }
     return array_sum($args);
 };
@@ -201,7 +201,7 @@ $product = function () {
     if (is_array($args[0])) {
         return array_product($args[0]);
     } else if (is_object($args[0])) {
-        return array_product(Core::value($args[0]));
+        return array_product(F::value($args[0]));
     }
     return array_product($args);
 };
@@ -365,7 +365,7 @@ $andBy = function () {
             };
     }
     return function ($x) use ($fns) {
-        return Core::all(function ($f) use ($x) {
+        return F::all(function ($f) use ($x) {
             return $f($x);
         }, $fns);
     };
@@ -388,7 +388,7 @@ $orBy = function () {
             };
     }
     return function ($x) use ($fns) {
-        return ! Core::none(function ($f) use ($x) {
+        return ! F::none(function ($f) use ($x) {
             return $f($x);
         }, $fns);
     };
@@ -409,7 +409,7 @@ $count = function ($xs) {
 // ### countBy
 $countBy = $curry(function ($f, $xs) {
     if (is_string($xs)) return str_split($xs);
-    if (is_object($xs)) $xs = Core::value($xs);
+    if (is_object($xs)) $xs = F::value($xs);
     return array_reduce($xs, $f, 0);
 }, 2);
 // ### values
@@ -534,19 +534,19 @@ $compose = function () {
 $pipe = function () {
     $fns = func_get_args();
     $fns = array_reverse($fns);
-    return call_user_func_array(Core::compose(), $fns);
+    return call_user_func_array(F::compose(), $fns);
 };
 
 // ### useOver
 $useOver = function ($used, $over) {
-    return Core::curry(function ($overArg, $usedArg) use ($used, $over) {
+    return F::curry(function ($overArg, $usedArg) use ($used, $over) {
         $overNow = $over($overArg);
         return $used($overNow, $usedArg);
     }, 2);
 };
 // ### useUnder
 $useUnder = function ($used, $under) {
-    return Core::curry(function ($usedArg, $underArg) use ($used, $under) {
+    return F::curry(function ($usedArg, $underArg) use ($used, $under) {
         $underNow = $under($underArg);
         return $used($underNow, $usedArg);
     }, 2);
@@ -604,7 +604,7 @@ $omit = function ($names) {
 };
 // ### project
 $project = $curry(function ($names, $data) {
-    return Core::map(Core::pick($names), $data);
+    return F::map(F::pick($names), $data);
 }, 2);
 
 // ### range
@@ -705,7 +705,7 @@ $take = $curry(function ($n, $xs) {
 
 // ### first, head
 $first = $head = function ($xs) {
-    $rs = Core::value(Core::take(1, $xs));
+    $rs = F::value(F::take(1, $xs));
     return reset($rs);
 };
 // ### ffirst
@@ -716,7 +716,7 @@ $last = function ($xs) {
     if (is_string($xs)) return $xs[strlen($xs) - 1];
     if (is_array($xs))  return $xs[count($xs) - 1];
     if (is_object($xs)) {
-        $arr = Core::value($xs);
+        $arr = F::value($xs);
         return $arr[count($arr) - 1];
     }
 };
@@ -833,7 +833,7 @@ $iterate = $curry(function ($f, $x) {
 }, 2);
 
 $cycle = function ($xs) {
-    $iter = Core::lazy($xs);
+    $iter = F::lazy($xs);
     return new \InfiniteIterator($iter);
 };
 
@@ -949,7 +949,7 @@ $map = $curry(function () {
 // ### mapcat, flatMap
 $mapcat = $flatMap = $curry(function () {
     $fn_with_args = func_get_args();
-    return Core::concat(call_user_func_array(Core::map(), $fn_with_args));
+    return F::concat(call_user_func_array(F::map(), $fn_with_args));
 }, 2);
 
 // ### filter
