@@ -9,7 +9,9 @@ class MemoizeTest extends PHPUnit_Framework_TestCase
         $memoFib = F::memoize(
             function ($n) use (& $memoFib, & $numCalls) {
                 $numCalls++;
-                if ($n === 1 || $n === 2) return 1;
+                if ($n <= 2) {
+                    return 1;
+                }
                 return $memoFib($n - 1) + $memoFib($n - 2);
             },
             F::identity()
